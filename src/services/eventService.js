@@ -87,3 +87,31 @@ export async function getApprovedEvents() {
 
   return data.map(mapDatabaseEventToFrontendEvent);
 }
+export async function getPendingEvents() {
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("status", "pending")
+    .order("event_date", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.map(mapDatabaseEventToFrontendEvent);
+}
+
+export async function updateEventStatus(eventId, status) {
+  const { data, error } = await supabase
+    .from("events")
+    .update({ status })
+    .eq("id", eventId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapDatabaseEventToFrontendEvent(data, 0);
+}
