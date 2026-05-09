@@ -1,39 +1,67 @@
 import { getCategoryById } from "../data/categories";
+import {
+  IconMusic,
+  IconFestival,
+  IconComedy,
+  IconArt,
+  IconFood,
+  IconWorkshop,
+  IconCareer,
+  IconStudent,
+  IconNightlife,
+  IconFree,
+  IconEvent,
+} from "./Icons";
+
+const categoryIconMap = {
+  music: IconMusic,
+  festival: IconFestival,
+  comedy: IconComedy,
+  art: IconArt,
+  food: IconFood,
+  workshop: IconWorkshop,
+  career: IconCareer,
+  student: IconStudent,
+  nightlife: IconNightlife,
+  free: IconFree,
+  event: IconEvent,
+};
 
 export default function EventCard({ event, isSelected, onClick }) {
   const category = getCategoryById(event.category);
+  const Icon = categoryIconMap[category.icon] ?? IconEvent;
 
   return (
     <button
       type="button"
       onClick={() => onClick(event)}
-      className={`w-full rounded-2xl border p-3 text-left transition ${
+      className={`w-full rounded-2xl border px-3.5 py-3 text-left transition ${
         isSelected
-          ? "border-blue-900 bg-white shadow-md"
-          : "border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50"
+          ? "border-rose-300 bg-white shadow-md"
+          : "border-slate-200 bg-white/90 hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
       <div className="flex items-start gap-3">
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-lg transition ${
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
             isSelected
-              ? "bg-red-50 text-red-600"
-              : "bg-blue-50 text-blue-700"
+              ? "bg-rose-50 text-rose-600"
+              : "bg-slate-50 text-slate-500"
           }`}
         >
-          {category.icon}
+          <Icon className="h-4.5 w-4.5" />
         </span>
 
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {category.label}
-            </span>
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            {category.label}
           </div>
 
-          <h3 className="font-semibold text-slate-900">{event.title}</h3>
+          <h3 className="line-clamp-2 text-base font-semibold leading-snug text-slate-950">
+            {event.title}
+          </h3>
 
-          <p className="text-sm text-slate-500">
+          <p className="mt-1 truncate text-sm text-slate-500">
             {event.venue} · {event.area}
           </p>
 
