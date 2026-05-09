@@ -1,10 +1,50 @@
+import { useState } from "react";
 import { getCategoryById } from "../data/categories";
 import { IconBookmark, IconCalendarPlus, IconShare } from "./Icons";
 
 export default function EventPreviewCard({ event }) {
+  const [shareMessage, setShareMessage] = useState("");
+
   if (!event) return null;
 
   const category = getCategoryById(event.category);
+
+  async function handleShareEvent() {
+    const eventUrl = `${window.location.origin}/?event=${event.id}`;
+
+    const shareText = `${event.title}
+${event.venue} · ${event.area}
+${event.date} · ${event.startTime}
+${event.price}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: event.title,
+          text: shareText,
+          url: eventUrl,
+        });
+
+        setShareMessage("Shared!");
+      } else {
+        await navigator.clipboard.writeText(`${shareText}\n${eventUrl}`);
+        setShareMessage("Copied link!");
+      }
+
+      setTimeout(() => {
+        setShareMessage("");
+      }, 1800);
+    } catch (error) {
+      if (error.name === "AbortError") return;
+
+      console.error("Share failed:", error);
+      setShareMessage("Could not share this event.");
+
+      setTimeout(() => {
+        setShareMessage("");
+      }, 1800);
+    }
+  }
 
   return (
     <section className="absolute inset-x-0 bottom-0 z-40 rounded-t-3xl bg-white p-4 shadow-2xl lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl">
@@ -13,7 +53,7 @@ export default function EventPreviewCard({ event }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <span className={`h-3 w-3 rounded-full ${category.colorClass}`} />
+            <span className="text-base leading-none">{category.icon}</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {category.label}
             </span>
@@ -28,7 +68,7 @@ export default function EventPreviewCard({ event }) {
 
         <button
           type="button"
-          className="rounded-full border border-slate-200 p-2 hover:bg-slate-50"
+          className="rounded-full border border-slate-200 p-2 transition hover:bg-slate-50"
           aria-label="Save event"
         >
           <IconBookmark className="h-5 w-5" />
@@ -54,17 +94,23 @@ export default function EventPreviewCard({ event }) {
         </div>
       </div>
 
+      {shareMessage && (
+        <p className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-center text-xs font-semibold text-rose-700">
+          {shareMessage}
+        </p>
+      )}
+
       <div className="mt-4 flex gap-2">
         <button
           type="button"
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
         >
           View Details
         </button>
 
         <button
           type="button"
-          className="rounded-2xl border border-slate-200 p-3 hover:bg-slate-50"
+          className="rounded-2xl border border-slate-200 p-3 transition hover:bg-slate-50"
           aria-label="Add to calendar"
         >
           <IconCalendarPlus className="h-5 w-5" />
@@ -72,7 +118,8 @@ export default function EventPreviewCard({ event }) {
 
         <button
           type="button"
-          className="rounded-2xl border border-slate-200 p-3 hover:bg-slate-50"
+          onClick={handleShareEvent}
+          className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
           aria-label="Share event"
         >
           <IconShare className="h-5 w-5" />
