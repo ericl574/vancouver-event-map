@@ -32,9 +32,10 @@ export async function signOutAdmin() {
 }
 
 export async function isCurrentUserAdmin() {
-  const { data, error } = await supabase.from("admin_users").select("user_id").single();
+  const { data, error } = await supabase.rpc("is_admin");
 
   if (error) {
+    console.error("Admin check failed:", error);
     return false;
   }
 
