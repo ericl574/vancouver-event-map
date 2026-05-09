@@ -81,7 +81,7 @@ function FlyToUserLocation({ userLocation }) {
   useEffect(() => {
     if (!userLocation?.lat || !userLocation?.lng) return;
 
-    map.flyTo([userLocation.lat, userLocation.lng], 13, {
+    map.flyTo([userLocation.lat, userLocation.lng], 14, {
       duration: 0.7,
     });
   }, [userLocation, map]);
