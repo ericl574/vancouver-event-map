@@ -9,10 +9,11 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
       <button
         type="button"
         onClick={() => onSelectCategory("all")}
-        className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium shadow-sm ${
+        aria-pressed={selectedCategory === "all"}
+        className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition ${
           selectedCategory === "all"
             ? "bg-slate-900 text-white"
-            : "bg-white text-slate-700"
+            : "bg-white text-slate-700 hover:bg-slate-100"
         }`}
       >
         All
@@ -23,10 +24,11 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
           key={category.id}
           type="button"
           onClick={() => onSelectCategory(category.id)}
-          className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm ${
+          aria-pressed={selectedCategory === category.id}
+          className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition ${
             selectedCategory === category.id
               ? "bg-slate-900 text-white"
-              : "bg-white text-slate-700"
+              : "bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
           <span className={`h-2.5 w-2.5 rounded-full ${category.colorClass}`} />
