@@ -6,21 +6,61 @@ import EventMap from "../components/EventMap";
 import EventPreviewCard from "../components/EventPreviewCard";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
-import { mockEvents } from "../data/mockEvents";
+import { getApprovedEvents } from "../services/eventService";
 import { filterEvents } from "../utils/eventUtils";
 
 export default function MapHomePage() {
+  const [events, setEvents] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState(mockEvents[0]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState("");
 
   const [userLocation, setUserLocation] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadEvents() {
+      try {
+        setIsLoadingEvents(true);
+        setEventsError("");
+
+        const approvedEvents = await getApprovedEvents();
+
+        if (!isMounted) return;
+
+        setEvents(approvedEvents);
+        setSelectedEvent(approvedEvents[0] ?? null);
+      } catch (error) {
+        console.error("Failed to load events:", error);
+
+        if (!isMounted) return;
+
+        setEventsError("Could not load events from the database.");
+        setEvents([]);
+        setSelectedEvent(null);
+      } finally {
+        if (isMounted) {
+          setIsLoadingEvents(false);
+        }
+      }
+    }
+
+    loadEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const filteredEvents = useMemo(() => {
-    return filterEvents(mockEvents, selectedCategory, query);
-  }, [selectedCategory, query]);
+    return filterEvents(events, selectedCategory, query);
+  }, [events, selectedCategory, query]);
 
   useEffect(() => {
     if (filteredEvents.length === 0) {
@@ -88,18 +128,18 @@ export default function MapHomePage() {
         userLocation={userLocation}
       />
 
-      {filteredEvents.length === 0 && <EmptyState />}
+      {!isLoadingEvents && filteredEvents.length === 0 && <EmptyState />}
 
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
-    <div className="pointer-events-auto mx-auto max-w-5xl">
-        <SearchBar query={query} onQueryChange={setQuery} />
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
+        <div className="pointer-events-auto mx-auto max-w-5xl">
+          <SearchBar query={query} onQueryChange={setQuery} />
 
-        <CategoryChips
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-        />
-    </div>
-    </header>
+          <CategoryChips
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+        </div>
+      </header>
 
       <div className="absolute right-4 top-36 z-50 flex flex-col items-end gap-2">
         <button
@@ -125,6 +165,18 @@ export default function MapHomePage() {
           </div>
         )}
       </div>
+
+      {(isLoadingEvents || eventsError) && (
+        <div className="absolute left-1/2 top-32 z-50 -translate-x-1/2 rounded-2xl bg-white/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
+          {isLoadingEvents && (
+            <p className="font-medium text-slate-700">Loading events...</p>
+          )}
+
+          {eventsError && (
+            <p className="font-medium text-red-600">{eventsError}</p>
+          )}
+        </div>
+      )}
 
       <EventListPanel
         events={filteredEvents}
