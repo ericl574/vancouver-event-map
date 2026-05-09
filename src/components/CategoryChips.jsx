@@ -1,7 +1,8 @@
 import { categories } from "../data/categories";
 
 export default function CategoryChips({ selectedCategory, onSelectCategory }) {
-  const selectedClass = "border-blue-900 bg-white text-blue-900";
+  const selectedClass =
+    "border-rose-300 bg-rose-50 text-rose-700 shadow-md";
   const unselectedClass =
     "border-slate-200 bg-white/95 text-slate-700 hover:border-slate-300 hover:bg-slate-50";
 
@@ -14,11 +15,12 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
         type="button"
         onClick={() => onSelectCategory("all")}
         aria-pressed={selectedCategory === "all"}
-        className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition ${
+        className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition ${
           selectedCategory === "all" ? selectedClass : unselectedClass
         }`}
       >
-        All
+        <span>✨</span>
+        <span>All</span>
       </button>
 
       {categories.map((category) => (
@@ -31,8 +33,10 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
             selectedCategory === category.id ? selectedClass : unselectedClass
           }`}
         >
-          <span className={`h-2.5 w-2.5 rounded-full ${category.colorClass}`} />
-          {category.label}
+          <span className="text-base leading-none">
+            {category.icon}
+          </span>
+          <span>{category.label}</span>
         </button>
       ))}
     </nav>
