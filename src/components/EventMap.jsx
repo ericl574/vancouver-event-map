@@ -67,7 +67,7 @@ function FlyToSelectedEvent({ selectedEvent }) {
   useEffect(() => {
     if (!selectedEvent?.lat || !selectedEvent?.lng) return;
 
-    map.flyTo([selectedEvent.lat, selectedEvent.lng], 14, {
+    map.flyTo([selectedEvent.lat, selectedEvent.lng], 15, {
       duration: 0.6,
     });
   }, [selectedEvent, map]);
@@ -110,8 +110,8 @@ export default function EventMap({
         className="h-full w-full"
       >
         <TileLayer
-  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 />
 
         <FlyToSelectedEvent selectedEvent={selectedEvent} />
