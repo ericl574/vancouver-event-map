@@ -90,16 +90,16 @@ export default function MapHomePage() {
 
       {filteredEvents.length === 0 && <EmptyState />}
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
-        <div className="pointer-events-auto mx-auto max-w-5xl">
-          <SearchBar query={query} onQueryChange={setQuery} />
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
+    <div className="pointer-events-auto mx-auto max-w-5xl">
+        <SearchBar query={query} onQueryChange={setQuery} />
 
-          <CategoryChips
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-          />
-        </div>
-      </header>
+        <CategoryChips
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        />
+    </div>
+    </header>
 
       <div className="absolute right-4 top-36 z-50 flex flex-col items-end gap-2">
         <button

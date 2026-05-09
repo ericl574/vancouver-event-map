@@ -7,9 +7,10 @@ export default function EventCard({ event, isSelected, onClick }) {
     <button
       type="button"
       onClick={() => onClick(event)}
-      aria-pressed={isSelected}
-      className={`w-full rounded-2xl border p-3 text-left transition hover:bg-slate-50 ${
-        isSelected ? "border-slate-900 bg-slate-50" : "border-slate-200"
+      className={`w-full rounded-2xl border p-3 text-left transition ${
+        isSelected
+          ? "border-blue-900 bg-white"
+          : "border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
       <div className="mb-2 flex items-center gap-2">
@@ -19,13 +20,13 @@ export default function EventCard({ event, isSelected, onClick }) {
         </span>
       </div>
 
-      <h3 className="font-semibold text-slate-900">{event.title}</h3>
+      <h3 className="font-semibold">{event.title}</h3>
 
       <p className="text-sm text-slate-500">
         {event.venue} · {event.area}
       </p>
 
-      <p className="mt-1 text-sm font-medium text-slate-800">
+      <p className="mt-1 text-sm font-medium">
         {event.date} · {event.startTime} · {event.price}
       </p>
 
