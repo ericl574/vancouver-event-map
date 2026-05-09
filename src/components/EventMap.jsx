@@ -6,73 +6,33 @@ import { getCategoryById } from "../data/categories";
 const GREATER_VANCOUVER_CENTER = [49.2463, -123.1162];
 
 function createCategoryIcon(category, isSelected = false) {
-  const size = isSelected ? 36 : 28;
-  const glowSize = isSelected ? 54 : 40;
+  const size = isSelected ? 22 : 14;
+
+  const background = isSelected
+    ? "rgba(239, 68, 68, 0.95)"
+    : "rgba(37, 99, 235, 0.55)";
+
+  const shadow = isSelected
+    ? "0 0 0 7px rgba(239, 68, 68, 0.18), 0 8px 18px rgba(15, 23, 42, 0.28)"
+    : "0 0 0 5px rgba(37, 99, 235, 0.16), 0 6px 14px rgba(15, 23, 42, 0.18)";
 
   return L.divIcon({
     className: "",
     html: `
       <div
         style="
-          position: relative;
-          width: ${glowSize}px;
-          height: ${glowSize}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 9999px;
+          background: ${background};
+          border: 2px solid white;
+          box-shadow: ${shadow};
         "
-      >
-        ${
-          isSelected
-            ? `
-              <div
-                style="
-                  position: absolute;
-                  width: ${glowSize}px;
-                  height: ${glowSize}px;
-                  border-radius: 9999px;
-                  background: ${category.hex};
-                  opacity: 0.22;
-                  box-shadow: 0 0 0 8px rgba(244, 114, 182, 0.22);
-                "
-              ></div>
-            `
-            : ""
-        }
-
-        <div
-          style="
-            position: relative;
-            width: ${size}px;
-            height: ${size}px;
-            border-radius: 9999px;
-            background: ${category.hex};
-            border: 3px solid white;
-            box-shadow: ${
-              isSelected
-                ? "0 10px 24px rgba(15, 23, 42, 0.42), 0 0 0 5px rgba(251, 207, 232, 0.75)"
-                : "0 8px 18px rgba(15, 23, 42, 0.35)"
-            };
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transform: ${isSelected ? "scale(1.04)" : "scale(1)"};
-          "
-        >
-          <div
-            style="
-              width: 8px;
-              height: 8px;
-              border-radius: 9999px;
-              background: white;
-            "
-          ></div>
-        </div>
-      </div>
+      ></div>
     `,
-    iconSize: [glowSize, glowSize],
-    iconAnchor: [glowSize / 2, glowSize / 2],
-    popupAnchor: [0, -glowSize / 2],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   });
 }
 
