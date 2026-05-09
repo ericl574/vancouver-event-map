@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "lint": "eslint .",
-  "preview": "vite preview",
-  "import:ticketmaster": "node --env-file=.env.local scripts/importTicketmasterEvents.js"
- },
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "import:ticketmaster": "node --env-file=.env.local scripts/importTicketmasterEvents.js",
+    "normalize:ticketmaster": "node --env-file=.env.local scripts/normalizeTicketmasterRawEvents.js"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
     "dotenv": "^17.4.2",
