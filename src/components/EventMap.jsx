@@ -6,37 +6,73 @@ import { getCategoryById } from "../data/categories";
 const GREATER_VANCOUVER_CENTER = [49.2463, -123.1162];
 
 function createCategoryIcon(category, isSelected = false) {
-  const size = isSelected ? 34 : 28;
+  const size = isSelected ? 36 : 28;
+  const glowSize = isSelected ? 54 : 40;
 
   return L.divIcon({
     className: "",
     html: `
       <div
         style="
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 9999px;
-          background: ${category.hex};
-          border: 3px solid white;
-          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+          position: relative;
+          width: ${glowSize}px;
+          height: ${glowSize}px;
           display: flex;
           align-items: center;
           justify-content: center;
         "
       >
+        ${
+          isSelected
+            ? `
+              <div
+                style="
+                  position: absolute;
+                  width: ${glowSize}px;
+                  height: ${glowSize}px;
+                  border-radius: 9999px;
+                  background: ${category.hex};
+                  opacity: 0.22;
+                  box-shadow: 0 0 0 8px rgba(244, 114, 182, 0.22);
+                "
+              ></div>
+            `
+            : ""
+        }
+
         <div
           style="
-            width: 8px;
-            height: 8px;
+            position: relative;
+            width: ${size}px;
+            height: ${size}px;
             border-radius: 9999px;
-            background: white;
+            background: ${category.hex};
+            border: 3px solid white;
+            box-shadow: ${
+              isSelected
+                ? "0 10px 24px rgba(15, 23, 42, 0.42), 0 0 0 5px rgba(251, 207, 232, 0.75)"
+                : "0 8px 18px rgba(15, 23, 42, 0.35)"
+            };
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: ${isSelected ? "scale(1.04)" : "scale(1)"};
           "
-        ></div>
+        >
+          <div
+            style="
+              width: 8px;
+              height: 8px;
+              border-radius: 9999px;
+              background: white;
+            "
+          ></div>
+        </div>
       </div>
     `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2],
+    iconSize: [glowSize, glowSize],
+    iconAnchor: [glowSize / 2, glowSize / 2],
+    popupAnchor: [0, -glowSize / 2],
   });
 }
 
@@ -97,18 +133,20 @@ export default function EventMap({
 }) {
   return (
     <section
-      className="absolute inset-0 z-0"
-      aria-label="Greater Vancouver event map"
-    >
-      <MapContainer
-        center={GREATER_VANCOUVER_CENTER}
-        zoom={11}
-        minZoom={9}
-        maxZoom={18}
-        scrollWheelZoom
-        zoomControl={false}
-        className="h-full w-full"
-      >
+  className="absolute inset-0 z-0 overflow-hidden"
+  aria-label="Greater Vancouver event map"
+>
+  <MapContainer
+    center={GREATER_VANCOUVER_CENTER}
+    zoom={11}
+    minZoom={9}
+    maxZoom={18}
+    scrollWheelZoom
+    zoomControl={false}
+    className="h-full w-full"
+  >
+<div className="pointer-events-none absolute inset-0 z-[400] 
+bg-gradient-to-b from-rose-50/35 via-transparent to-white/10" />
         <TileLayer
   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
