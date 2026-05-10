@@ -82,26 +82,32 @@ function createEventMarkerElement(group, isSelected = false) {
   const count = group.events.length;
   const isGrouped = count > 1;
 
-  const size = isSelected ? 34 : isGrouped ? 30 : 16;
-  const color = isSelected ? "#ef4444" : category.hex || "#2563eb";
+  const size = isSelected ? 34 : isGrouped ? 32 : 16;
+
+  const background = isGrouped
+    ? "#0f172a" // grouped markers are always navy
+    : category.hex || "#2563eb";
 
   marker.style.width = `${size}px`;
   marker.style.height = `${size}px`;
   marker.style.borderRadius = "9999px";
-  marker.style.background = color;
+  marker.style.background = background;
   marker.style.border = "2px solid white";
-  marker.style.boxShadow = isSelected
-    ? "0 0 0 7px rgba(239, 68, 68, 0.18), 0 8px 18px rgba(15, 23, 42, 0.28)"
-    : "0 0 0 5px rgba(37, 99, 235, 0.16), 0 6px 14px rgba(15, 23, 42, 0.18)";
   marker.style.cursor = "pointer";
   marker.style.display = "flex";
   marker.style.alignItems = "center";
   marker.style.justifyContent = "center";
   marker.style.color = "white";
-  marker.style.fontSize = "12px";
+  marker.style.fontSize = isGrouped ? "13px" : "0px";
   marker.style.fontWeight = "800";
   marker.style.lineHeight = "1";
   marker.style.userSelect = "none";
+
+  marker.style.boxShadow = isSelected
+    ? "0 0 0 4px rgba(244, 63, 94, 0.35), 0 0 0 9px rgba(244, 63, 94, 0.16), 0 10px 22px rgba(15, 23, 42, 0.28)"
+    : isGrouped
+      ? "0 0 0 5px rgba(15, 23, 42, 0.16), 0 8px 18px rgba(15, 23, 42, 0.24)"
+      : "0 0 0 5px rgba(15, 23, 42, 0.08), 0 6px 14px rgba(15, 23, 42, 0.16)";
 
   if (isGrouped) {
     marker.textContent = String(count);
@@ -121,6 +127,48 @@ function createUserLocationElement() {
   marker.style.boxShadow = "0 0 0 8px rgba(37, 99, 235, 0.2)";
 
   return marker;
+}
+function createDestinationLocationElement() {
+  const wrapper = document.createElement("div");
+
+  wrapper.style.position = "relative";
+  wrapper.style.width = "34px";
+  wrapper.style.height = "44px";
+  wrapper.style.cursor = "pointer";
+  wrapper.style.filter = "drop-shadow(0 8px 14px rgba(15, 23, 42, 0.28))";
+
+  wrapper.innerHTML = `
+    <div
+      style="
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 34px;
+        height: 34px;
+        transform: translateX(-50%);
+        border-radius: 9999px 9999px 9999px 0;
+        background: #ef4444;
+        border: 3px solid white;
+        rotate: -45deg;
+        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.18);
+      "
+    >
+      <div
+        style="
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 12px;
+          height: 12px;
+          transform: translate(-50%, -50%);
+          border-radius: 9999px;
+          background: white;
+        "
+      ></div>
+    </div>
+  `;
+
+  return wrapper;
 }
 
 function createSingleEventPopupHtml(event, category) {
@@ -207,11 +255,13 @@ export default function EventMap({
   onSelectEvent,
   onSelectLocationGroup,
   userLocation,
+  destinationLocation,
 }) {
   const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const eventMarkersRef = useRef([]);
-  const userMarkerRef = useRef(null);
+const mapRef = useRef(null);
+const eventMarkersRef = useRef([]);
+const userMarkerRef = useRef(null);
+const destinationMarkerRef = useRef(null);
 
   const locationGroups = useMemo(() => {
     return groupEventsByLocation(events);
@@ -298,17 +348,17 @@ export default function EventMap({
   }, [locationGroups, selectedEvent, onSelectEvent]);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !selectedEvent?.lat || !selectedEvent?.lng) return;
+  const map = mapRef.current;
+  if (!map || !selectedEvent?.lat || !selectedEvent?.lng) return;
 
-    map.flyTo({
-      center: [selectedEvent.lng, selectedEvent.lat],
-      zoom: 15,
-      speed: 1.4,
-      curve: 1.2,
-      essential: true,
-    });
-  }, [selectedEvent]);
+  map.flyTo({
+    center: [selectedEvent.lng, selectedEvent.lat],
+    zoom: 15,
+    speed: 1.4,
+    curve: 1.2,
+    essential: true,
+  });
+}, [selectedEvent]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -342,6 +392,47 @@ export default function EventMap({
       essential: true,
     });
   }, [userLocation]);
+  useEffect(() => {
+  const map = mapRef.current;
+  if (!map) return;
+
+  if (destinationMarkerRef.current) {
+    destinationMarkerRef.current.remove();
+    destinationMarkerRef.current = null;
+  }
+
+  if (!destinationLocation?.lat || !destinationLocation?.lng) return;
+
+  const popup = new maplibregl.Popup({
+    offset: 18,
+    closeButton: false,
+  }).setHTML(`
+    <div style="min-width: 180px;">
+      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
+        Reference location
+      </p>
+      <p style="margin: 0; font-size: 13px; font-weight: 800; color: #0f172a;">
+        ${destinationLocation.shortLabel || "Selected location"}
+      </p>
+    </div>
+  `);
+
+  destinationMarkerRef.current = new maplibregl.Marker({
+  element: createDestinationLocationElement(),
+  anchor: "bottom",
+})
+    .setLngLat([destinationLocation.lng, destinationLocation.lat])
+    .setPopup(popup)
+    .addTo(map);
+
+  map.flyTo({
+  center: [destinationLocation.lng, destinationLocation.lat],
+  zoom: 15,
+  speed: 1.6,
+  curve: 1.15,
+  essential: true,
+});
+}, [destinationLocation]);
 
   return (
     <section

@@ -128,3 +128,58 @@ export function filterEvents(events, selectedCategory, query, filters = {}) {
     );
   });
 }
+export function calculateDistanceKm(pointA, pointB) {
+  if (!pointA || !pointB) return null;
+
+  const lat1 = Number(pointA.lat);
+  const lng1 = Number(pointA.lng);
+  const lat2 = Number(pointB.lat);
+  const lng2 = Number(pointB.lng);
+
+  if (
+    !Number.isFinite(lat1) ||
+    !Number.isFinite(lng1) ||
+    !Number.isFinite(lat2) ||
+    !Number.isFinite(lng2)
+  ) {
+    return null;
+  }
+
+  const earthRadiusKm = 6371;
+  const degreesToRadians = (degrees) => (degrees * Math.PI) / 180;
+
+  const dLat = degreesToRadians(lat2 - lat1);
+  const dLng = degreesToRadians(lng2 - lng1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(degreesToRadians(lat1)) *
+      Math.cos(degreesToRadians(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+}
+
+export function addDistanceFromPoint(events, referencePoint) {
+  if (!referencePoint) {
+    return events.map((event) => {
+      const { distanceKm, ...eventWithoutDistance } = event;
+      return eventWithoutDistance;
+    });
+  }
+
+  return events
+    .map((event) => ({
+      ...event,
+      distanceKm: calculateDistanceKm(referencePoint, event),
+    }))
+    .sort((a, b) => {
+      const distanceA = a.distanceKm ?? Number.MAX_SAFE_INTEGER;
+      const distanceB = b.distanceKm ?? Number.MAX_SAFE_INTEGER;
+
+      return distanceA - distanceB;
+    });
+}

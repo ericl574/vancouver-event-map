@@ -8,7 +8,8 @@ import FilterPanel from "../components/FilterPanel";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
 import { getApprovedEvents } from "../services/eventService";
-import { filterEvents } from "../utils/eventUtils";
+import { geocodeAddress } from "../services/geocodingService";
+import { addDistanceFromPoint, filterEvents } from "../utils/eventUtils";
 
 export default function MapHomePage() {
   const [events, setEvents] = useState([]);
@@ -29,6 +30,9 @@ export default function MapHomePage() {
   const [userLocation, setUserLocation] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
+  const [destinationLocation, setDestinationLocation] = useState(null);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [locationSearchError, setLocationSearchError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -66,21 +70,31 @@ export default function MapHomePage() {
     };
   }, []);
 
-  const filteredEvents = useMemo(() => {
-    return filterEvents(events, selectedCategory, query, filters);
-  }, [events, selectedCategory, query, filters]);
+  const eventSearchQuery = destinationLocation ? "" : query;
 
-  const sidebarEvents = selectedLocationGroup?.events ?? filteredEvents;
+const filteredEvents = useMemo(() => {
+  return filterEvents(events, selectedCategory, eventSearchQuery, filters);
+}, [events, selectedCategory, eventSearchQuery, filters]);
+
+const displayedEvents = useMemo(() => {
+  return addDistanceFromPoint(filteredEvents, destinationLocation);
+}, [filteredEvents, destinationLocation]);
+
+  const sidebarEvents = selectedLocationGroup?.events ?? displayedEvents;
 
   const sidebarTitle = selectedLocationGroup
-    ? selectedLocationGroup.venue || "Events at this location"
+  ? selectedLocationGroup.venue || "Events at this location"
+  : destinationLocation
+    ? `Events near ${destinationLocation.shortLabel || "selected location"}`
     : "Events in Greater Vancouver";
 
-  const sidebarSubtitle = selectedLocationGroup
-    ? `${selectedLocationGroup.events.length} event${
-        selectedLocationGroup.events.length === 1 ? "" : "s"
-      } at this location`
-    : `${filteredEvents.length} events found`;
+const sidebarSubtitle = selectedLocationGroup
+  ? `${selectedLocationGroup.events.length} event${
+      selectedLocationGroup.events.length === 1 ? "" : "s"
+    } at this location`
+  : destinationLocation
+    ? `${displayedEvents.length} events sorted by distance`
+    : `${displayedEvents.length} events found`;
 
   useEffect(() => {
     setSelectedLocationGroup(null);
@@ -96,10 +110,19 @@ export default function MapHomePage() {
       (event) => event.id === selectedEvent?.id
     );
 
-    if (!selectedEventStillVisible) {
-      setSelectedEvent(sidebarEvents[0]);
+    if (selectedEventStillVisible) {
+      return;
     }
-  }, [sidebarEvents, selectedEvent?.id]);
+
+    // When a reference address is pinned, keep the map focused on that address.
+    // Do not auto-select the nearest event and steal the camera.
+    if (destinationLocation) {
+      setSelectedEvent(null);
+      return;
+    }
+
+    setSelectedEvent(sidebarEvents[0]);
+  }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
 
   function handleSelectEvent(event) {
     setSelectedLocationGroup(null);
@@ -117,10 +140,55 @@ export default function MapHomePage() {
   }
 
   function handleShowAllEvents() {
-    setSelectedLocationGroup(null);
-    setSelectedEvent(filteredEvents[0] ?? null);
-  }
+  setSelectedLocationGroup(null);
+  setDestinationLocation(null);
+  setLocationSearchError("");
+  setQuery("");
+  setSelectedEvent(filteredEvents[0] ?? null);
+}
+  function handleQueryChange(value) {
+  setQuery(value);
+  setLocationSearchError("");
 
+  if (destinationLocation) {
+    setDestinationLocation(null);
+  }
+}
+
+async function handleSearchLocation(searchText) {
+  const trimmedSearchText = searchText.trim();
+
+  if (!trimmedSearchText) return;
+
+  try {
+    setIsSearchingLocation(true);
+    setLocationSearchError("");
+
+    const result = await geocodeAddress(trimmedSearchText);
+
+    if (!result) {
+      setLocationSearchError("Could not find that location.");
+      return;
+    }
+
+    setDestinationLocation(result);
+    setSelectedLocationGroup(null);
+    setSelectedEvent(null);
+  } catch (error) {
+    console.error("Location search failed:", error);
+    setLocationSearchError("Could not search that location.");
+  } finally {
+    setIsSearchingLocation(false);
+  }
+}
+
+function handleClearDestinationLocation() {
+  setDestinationLocation(null);
+  setLocationSearchError("");
+  setQuery("");
+  setSelectedLocationGroup(null);
+  setSelectedEvent(displayedEvents[0] ?? null);
+}
   function handleUseCurrentLocation() {
     setLocationError("");
 
@@ -173,27 +241,52 @@ export default function MapHomePage() {
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100 text-slate-900">
       <EventMap
-        events={filteredEvents}
-        selectedEvent={selectedEvent}
-        onSelectEvent={handleSelectEvent}
-        onSelectLocationGroup={handleSelectLocationGroup}
-        userLocation={userLocation}
-      />
+  events={displayedEvents}
+  selectedEvent={selectedEvent}
+  onSelectEvent={handleSelectEvent}
+  onSelectLocationGroup={handleSelectLocationGroup}
+  userLocation={userLocation}
+  destinationLocation={destinationLocation}
+/>
 
-      {!isLoadingEvents && filteredEvents.length === 0 && <EmptyState />}
+      {!isLoadingEvents && displayedEvents.length === 0 && <EmptyState />}
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
         <div className="pointer-events-auto mx-auto max-w-5xl">
           <SearchBar
             query={query}
-            onQueryChange={setQuery}
+            onQueryChange={handleQueryChange}
             onFilterClick={() => setIsFilterOpen(true)}
+            onSearchSubmit={handleSearchLocation}
+            isSearchingLocation={isSearchingLocation}
           />
 
           <CategoryChips
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
           />
+          {(destinationLocation || locationSearchError) && (
+  <div className="mt-2 flex flex-wrap items-center gap-2">
+    {destinationLocation && (
+      <div className="rounded-2xl bg-white/95 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
+        Reference: {destinationLocation.shortLabel}
+        <button
+          type="button"
+          onClick={handleClearDestinationLocation}
+          className="ml-3 text-rose-600 hover:underline"
+        >
+          Clear
+        </button>
+      </div>
+    )}
+
+    {locationSearchError && (
+      <div className="rounded-2xl bg-white/95 px-4 py-2 text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
+        {locationSearchError}
+      </div>
+    )}
+  </div>
+)}
         </div>
       </header>
 
@@ -237,10 +330,14 @@ export default function MapHomePage() {
       <EventListPanel
         events={sidebarEvents}
         selectedEvent={selectedEvent}
-        onSelectEvent={setSelectedEvent}
+        onSelectEvent={handleSelectEvent}
         title={sidebarTitle}
         subtitle={sidebarSubtitle}
-        onShowAllEvents={selectedLocationGroup ? handleShowAllEvents : undefined}
+        onShowAllEvents={
+  selectedLocationGroup || destinationLocation
+    ? handleShowAllEvents
+    : undefined
+}
       />
 
       <EventPreviewCard event={selectedEvent} />

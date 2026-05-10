@@ -1,17 +1,34 @@
 import { IconSearch, IconSliders, IconX } from "./Icons";
 
-export default function SearchBar({ query, onQueryChange, onFilterClick }) {
+export default function SearchBar({
+  query,
+  onQueryChange,
+  onFilterClick,
+  onSearchSubmit,
+  isSearchingLocation = false,
+}) {
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!query.trim()) return;
+
+    onSearchSubmit?.(query);
+  }
+
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur">
+    <form
+      onSubmit={handleSubmit}
+      className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur"
+    >
       <div className="flex flex-1 items-center gap-2 px-3">
         <IconSearch className="h-5 w-5 text-slate-500" />
 
         <input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search events, venues, neighborhoods..."
+          placeholder="Search events, venues, or enter an address..."
           className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-          aria-label="Search events"
+          aria-label="Search events or address"
         />
 
         {query && (
@@ -27,6 +44,17 @@ export default function SearchBar({ query, onQueryChange, onFilterClick }) {
         )}
       </div>
 
+      {query.trim() && (
+        <button
+          type="submit"
+          disabled={isSearchingLocation}
+          className="hidden rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:block"
+          title="Pin this as a reference location"
+        >
+          {isSearchingLocation ? "Searching..." : "Near"}
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onFilterClick}
@@ -36,6 +64,6 @@ export default function SearchBar({ query, onQueryChange, onFilterClick }) {
       >
         <IconSliders className="h-5 w-5 text-slate-700" />
       </button>
-    </div>
+    </form>
   );
 }
