@@ -86,9 +86,6 @@ function isFreeEvent(rawEvent) {
 function inferCategory(rawEvent) {
   const text = getKeywordText(rawEvent);
 
-  if (isFreeEvent(rawEvent)) {
-    return "free";
-  }
 
   if (
     text.includes("concert") ||
@@ -313,6 +310,56 @@ async function markRawEventAsNormalized(rawEventId, eventId) {
     );
   }
 }
+async function findExistingEvent(rawEvent, event) {
+  if (rawEvent.normalized_event_id) {
+    const { data, error } = await supabase
+      .from("events")
+      .select("id")
+      .eq("id", rawEvent.normalized_event_id)
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.[0]) {
+      return data[0];
+    }
+  }
+
+  if (event.source_url) {
+    const { data, error } = await supabase
+      .from("events")
+      .select("id")
+      .eq("source_url", event.source_url)
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.[0]) {
+      return data[0];
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("id")
+    .eq("title", event.title)
+    .eq("event_date", event.event_date)
+    .eq("start_time", event.start_time)
+    .eq("venue", event.venue)
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.[0] || null;
+}
 
 async function fetchRawEventsToNormalize() {
   const { data, error } = await supabase
@@ -357,20 +404,28 @@ async function normalizeTicketmasterRawEvents() {
         continue;
       }
 
-      const { data: insertedEvent, error: insertError } = await supabase
-        .from("events")
-        .insert(event)
-        .select("id")
-        .single();
+      const existingEvent = await findExistingEvent(rawEvent, event);
 
-      if (insertError) {
-        throw insertError;
-      }
+if (existingEvent) {
+  await markRawEventAsNormalized(rawEvent.id, existingEvent.id);
+  console.log(`Already normalized, linked existing event: ${event.title}`);
+  continue;
+}
 
-      await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+const { data: insertedEvent, error: insertError } = await supabase
+  .from("events")
+  .insert(event)
+  .select("id")
+  .single();
 
-      normalizedCount += 1;
-      console.log(`Normalized: ${event.title}`);
+if (insertError) {
+  throw insertError;
+}
+
+await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+
+normalizedCount += 1;
+console.log(`Normalized: ${event.title}`);
     } catch (error) {
       errorCount += 1;
 
