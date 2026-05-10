@@ -162,7 +162,9 @@ ${event.price}`;
         </button>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600">{event.description}</p>
+      <p className="mt-3 line-clamp-3 text-sm text-slate-600">
+        {event.description}
+      </p>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
         <div className="rounded-2xl bg-slate-100 p-3">

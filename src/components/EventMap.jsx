@@ -1,14 +1,88 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getCategoryById } from "../data/categories";
 
 const GREATER_VANCOUVER_CENTER = [-123.1162, 49.2463];
 
-function createEventMarkerElement(category, isSelected = false) {
-  const marker = document.createElement("div");
+function getLocationGroupKey(event) {
+  const lat = Number(event.lat);
+  const lng = Number(event.lng);
 
-  const size = isSelected ? 22 : 14;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return "";
+  }
+
+  // 5 decimals is about 1 meter precision, enough to group same-location events.
+  return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+}
+
+function getEventSortValue(event) {
+  const date = event.event_date || event.eventDate || "";
+  const time = event.start_time || event.rawStartTime || "23:59:59";
+
+  const timestamp = new Date(`${date}T${time}`).getTime();
+
+  return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+}
+
+function groupEventsByLocation(events) {
+  const groupMap = new Map();
+
+  events.forEach((event) => {
+    const key = getLocationGroupKey(event);
+
+    if (!key) return;
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        key,
+        lat: Number(event.lat),
+        lng: Number(event.lng),
+        events: [],
+      });
+    }
+
+    groupMap.get(key).events.push(event);
+  });
+
+  return Array.from(groupMap.values()).map((group) => {
+    const sortedEvents = [...group.events].sort(
+      (a, b) => getEventSortValue(a) - getEventSortValue(b)
+    );
+
+    return {
+      ...group,
+      events: sortedEvents,
+      primaryEvent: sortedEvents[0],
+    };
+  });
+}
+
+function getGroupCategory(group) {
+  const firstCategory = group.primaryEvent?.category;
+  const allSameCategory = group.events.every(
+    (event) => event.category === firstCategory
+  );
+
+  if (allSameCategory) {
+    return getCategoryById(firstCategory);
+  }
+
+  return {
+    id: "mixed",
+    label: "Multiple events",
+    hex: "#e11d48",
+  };
+}
+
+function createEventMarkerElement(group, isSelected = false) {
+  const marker = document.createElement("div");
+  const category = getGroupCategory(group);
+  const count = group.events.length;
+  const isGrouped = count > 1;
+
+  const size = isSelected ? 34 : isGrouped ? 30 : 16;
   const color = isSelected ? "#ef4444" : category.hex || "#2563eb";
 
   marker.style.width = `${size}px`;
@@ -20,6 +94,18 @@ function createEventMarkerElement(category, isSelected = false) {
     ? "0 0 0 7px rgba(239, 68, 68, 0.18), 0 8px 18px rgba(15, 23, 42, 0.28)"
     : "0 0 0 5px rgba(37, 99, 235, 0.16), 0 6px 14px rgba(15, 23, 42, 0.18)";
   marker.style.cursor = "pointer";
+  marker.style.display = "flex";
+  marker.style.alignItems = "center";
+  marker.style.justifyContent = "center";
+  marker.style.color = "white";
+  marker.style.fontSize = "12px";
+  marker.style.fontWeight = "800";
+  marker.style.lineHeight = "1";
+  marker.style.userSelect = "none";
+
+  if (isGrouped) {
+    marker.textContent = String(count);
+  }
 
   return marker;
 }
@@ -37,7 +123,7 @@ function createUserLocationElement() {
   return marker;
 }
 
-function createPopupHtml(event, category) {
+function createSingleEventPopupHtml(event, category) {
   return `
     <div style="min-width: 190px;">
       <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
@@ -71,16 +157,65 @@ function createPopupHtml(event, category) {
   `;
 }
 
+function createGroupedPopupHtml(group) {
+  const venue = group.primaryEvent?.venue || "This location";
+  const visibleEvents = group.events.slice(0, 5);
+
+  const eventRows = visibleEvents
+    .map(
+      (event) => `
+        <div style="padding: 8px 0; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0 0 2px; font-size: 13px; font-weight: 800; color: #0f172a;">
+            ${event.title}
+          </p>
+          <p style="margin: 0; font-size: 12px; color: #475569;">
+            ${event.date || ""}${event.startTime ? ` · ${event.startTime}` : ""}${event.price ? ` · ${event.price}` : ""}
+          </p>
+        </div>
+      `
+    )
+    .join("");
+
+  const remainingCount = group.events.length - visibleEvents.length;
+
+  return `
+    <div style="min-width: 230px;">
+      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
+        ${group.events.length} events at this location
+      </p>
+
+      <h3 style="margin: 0 0 8px; font-size: 15px; font-weight: 800; color: #0f172a;">
+        ${venue}
+      </h3>
+
+      ${eventRows}
+
+      ${
+        remainingCount > 0
+          ? `<p style="margin: 8px 0 0; font-size: 12px; font-weight: 700; color: #64748b;">
+              +${remainingCount} more event${remainingCount === 1 ? "" : "s"}
+            </p>`
+          : ""
+      }
+    </div>
+  `;
+}
+
 export default function EventMap({
   events,
   selectedEvent,
   onSelectEvent,
+  onSelectLocationGroup,
   userLocation,
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const eventMarkersRef = useRef([]);
   const userMarkerRef = useRef(null);
+
+  const locationGroups = useMemo(() => {
+    return groupEventsByLocation(events);
+  }, [events]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -94,6 +229,7 @@ export default function EventMap({
       maxZoom: 18,
       attributionControl: false,
     });
+
     mapRef.current.scrollZoom.setZoomRate(1 / 25);
     mapRef.current.scrollZoom.setWheelZoomRate(1 / 150);
 
@@ -117,33 +253,49 @@ export default function EventMap({
     eventMarkersRef.current.forEach((marker) => marker.remove());
     eventMarkersRef.current = [];
 
-    events.forEach((event) => {
-      if (!event.lat || !event.lng) return;
+    locationGroups.forEach((group) => {
+      if (!group.lat || !group.lng) return;
 
-      const category = getCategoryById(event.category);
-      const isSelected = selectedEvent?.id === event.id;
-      const markerElement = createEventMarkerElement(category, isSelected);
+      const containsSelectedEvent = group.events.some(
+        (event) => event.id === selectedEvent?.id
+      );
+
+      const markerElement = createEventMarkerElement(
+        group,
+        containsSelectedEvent
+      );
 
       markerElement.addEventListener("click", () => {
-        onSelectEvent(event);
+        if (group.events.length > 1 && onSelectLocationGroup) {
+          onSelectLocationGroup(group);
+          return;
+        }
+
+        onSelectEvent(group.primaryEvent);
       });
+
+      const category = getCategoryById(group.primaryEvent?.category);
 
       const popup = new maplibregl.Popup({
         offset: 18,
         closeButton: false,
-      }).setHTML(createPopupHtml(event, category));
+      }).setHTML(
+        group.events.length > 1
+          ? createGroupedPopupHtml(group)
+          : createSingleEventPopupHtml(group.primaryEvent, category)
+      );
 
       const marker = new maplibregl.Marker({
         element: markerElement,
         anchor: "center",
       })
-        .setLngLat([event.lng, event.lat])
+        .setLngLat([group.lng, group.lat])
         .setPopup(popup)
         .addTo(map);
 
       eventMarkersRef.current.push(marker);
     });
-  }, [events, selectedEvent, onSelectEvent]);
+  }, [locationGroups, selectedEvent, onSelectEvent]);
 
   useEffect(() => {
     const map = mapRef.current;

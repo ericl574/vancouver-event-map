@@ -15,6 +15,7 @@ export default function MapHomePage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedLocationGroup, setSelectedLocationGroup] = useState(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
@@ -68,20 +69,56 @@ export default function MapHomePage() {
     return filterEvents(events, selectedCategory, query, filters);
   }, [events, selectedCategory, query, filters]);
 
+  const sidebarEvents = selectedLocationGroup?.events ?? filteredEvents;
+
+  const sidebarTitle = selectedLocationGroup
+    ? selectedLocationGroup.venue || "Events at this location"
+    : "Events in Greater Vancouver";
+
+  const sidebarSubtitle = selectedLocationGroup
+    ? `${selectedLocationGroup.events.length} event${
+        selectedLocationGroup.events.length === 1 ? "" : "s"
+      } at this location`
+    : `${filteredEvents.length} events found`;
+
   useEffect(() => {
-    if (filteredEvents.length === 0) {
+    setSelectedLocationGroup(null);
+  }, [selectedCategory, query, filters]);
+
+  useEffect(() => {
+    if (sidebarEvents.length === 0) {
       setSelectedEvent(null);
       return;
     }
 
-    const selectedEventStillVisible = filteredEvents.some(
+    const selectedEventStillVisible = sidebarEvents.some(
       (event) => event.id === selectedEvent?.id
     );
 
     if (!selectedEventStillVisible) {
-      setSelectedEvent(filteredEvents[0]);
+      setSelectedEvent(sidebarEvents[0]);
     }
-  }, [filteredEvents, selectedEvent?.id]);
+  }, [sidebarEvents, selectedEvent?.id]);
+
+  function handleSelectEvent(event) {
+    setSelectedLocationGroup(null);
+    setSelectedEvent(event);
+  }
+
+  function handleSelectLocationGroup(group) {
+    setSelectedLocationGroup({
+      key: group.key,
+      venue: group.primaryEvent?.venue || "This location",
+      events: group.events,
+    });
+
+    setSelectedEvent(group.primaryEvent);
+  }
+
+  function handleShowAllEvents() {
+    setSelectedLocationGroup(null);
+    setSelectedEvent(filteredEvents[0] ?? null);
+  }
 
   function handleUseCurrentLocation() {
     setLocationError("");
@@ -136,7 +173,8 @@ export default function MapHomePage() {
       <EventMap
         events={filteredEvents}
         selectedEvent={selectedEvent}
-        onSelectEvent={setSelectedEvent}
+        onSelectEvent={handleSelectEvent}
+        onSelectLocationGroup={handleSelectLocationGroup}
         userLocation={userLocation}
       />
 
@@ -195,9 +233,12 @@ export default function MapHomePage() {
       )}
 
       <EventListPanel
-        events={filteredEvents}
+        events={sidebarEvents}
         selectedEvent={selectedEvent}
         onSelectEvent={setSelectedEvent}
+        title={sidebarTitle}
+        subtitle={sidebarSubtitle}
+        onShowAllEvents={selectedLocationGroup ? handleShowAllEvents : undefined}
       />
 
       <EventPreviewCard event={selectedEvent} />
