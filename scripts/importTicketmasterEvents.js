@@ -200,11 +200,11 @@ async function importTicketmasterEvents() {
     );
 
     const { error } = await supabase
-      .from("raw_events")
-      .upsert(rows, {
-        onConflict: "source_name,source_url",
-        ignoreDuplicates: false,
-      });
+  .from("raw_events")
+  .upsert(rows, {
+    onConflict: "source_name,source_url",
+    ignoreDuplicates: true,
+  });
 
     if (error) {
       throw error;
