@@ -4,6 +4,7 @@ import EmptyState from "../components/EmptyState";
 import EventListPanel from "../components/EventListPanel";
 import EventMap from "../components/EventMap";
 import EventPreviewCard from "../components/EventPreviewCard";
+import FilterPanel from "../components/FilterPanel";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
 import { getApprovedEvents } from "../services/eventService";
@@ -14,6 +15,11 @@ export default function MapHomePage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    timeRange: "all",
+  });
 
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState("");
@@ -59,8 +65,8 @@ export default function MapHomePage() {
   }, []);
 
   const filteredEvents = useMemo(() => {
-    return filterEvents(events, selectedCategory, query);
-  }, [events, selectedCategory, query]);
+    return filterEvents(events, selectedCategory, query, filters);
+  }, [events, selectedCategory, query, filters]);
 
   useEffect(() => {
     if (filteredEvents.length === 0) {
@@ -119,6 +125,12 @@ export default function MapHomePage() {
     );
   }
 
+  function handleResetFilters() {
+    setFilters({
+      timeRange: "all",
+    });
+  }
+
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100 text-slate-900">
       <EventMap
@@ -132,7 +144,11 @@ export default function MapHomePage() {
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
         <div className="pointer-events-auto mx-auto max-w-5xl">
-          <SearchBar query={query} onQueryChange={setQuery} />
+          <SearchBar
+            query={query}
+            onQueryChange={setQuery}
+            onFilterClick={() => setIsFilterOpen(true)}
+          />
 
           <CategoryChips
             selectedCategory={selectedCategory}
@@ -185,6 +201,14 @@ export default function MapHomePage() {
       />
 
       <EventPreviewCard event={selectedEvent} />
+
+      <FilterPanel
+        isOpen={isFilterOpen}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setIsFilterOpen(false)}
+        onReset={handleResetFilters}
+      />
     </main>
   );
 }
