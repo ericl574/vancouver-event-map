@@ -1,35 +1,11 @@
 import { useState } from "react";
+import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
 import {
   IconBookmark,
   IconCalendarPlus,
   IconShare,
-  IconMusic,
-  IconFestival,
-  IconComedy,
-  IconArt,
-  IconFood,
-  IconWorkshop,
-  IconCareer,
-  IconStudent,
-  IconNightlife,
-  IconFree,
-  IconEvent,
 } from "./Icons";
-
-const categoryIconMap = {
-  music: IconMusic,
-  festival: IconFestival,
-  comedy: IconComedy,
-  art: IconArt,
-  food: IconFood,
-  workshop: IconWorkshop,
-  career: IconCareer,
-  student: IconStudent,
-  nightlife: IconNightlife,
-  free: IconFree,
-  event: IconEvent,
-};
 
 export default function EventPreviewCard({ event }) {
   const [shareMessage, setShareMessage] = useState("");
@@ -37,7 +13,6 @@ export default function EventPreviewCard({ event }) {
   if (!event) return null;
 
   const category = getCategoryById(event.category);
-  const Icon = categoryIconMap[category.icon] ?? IconEvent;
 
   async function handleShareEvent() {
     const eventUrl = `${window.location.origin}/?event=${event.id}`;
@@ -138,7 +113,7 @@ ${event.price}`;
         <div>
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
-              <Icon className="h-4 w-4" />
+              <CategoryIcon icon={category.icon} className="h-4 w-4" />
             </span>
 
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">

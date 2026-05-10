@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { CATEGORY_ICON_SVGS, getCategoryMapIconName } from "../assets/categoryIcons";
 import { getCategoryById } from "../data/categories";
 
 const GREATER_VANCOUVER_CENTER = [-123.1162, 49.2463];
@@ -95,6 +96,7 @@ function createEventGeoJson(events, selectedEvent) {
           selected: group.selected ? 1 : 0,
           category: category.id || primaryEvent?.category || "event",
           categoryIcon: category.icon || "event",
+          iconImage: getCategoryMapIconName(category.icon || "event"),
           venue: group.venue || "This location",
         },
       };
@@ -263,6 +265,35 @@ function createDestinationLocationElement() {
   return wrapper;
 }
 
+
+function loadMapImageFromSvg(svg) {
+  return new Promise((resolve, reject) => {
+    const image = new Image(64, 64);
+
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+}
+
+async function addCategoryMapIcons(map) {
+  const entries = Object.entries(CATEGORY_ICON_SVGS);
+
+  await Promise.all(
+    entries.map(async ([iconKey, svg]) => {
+      const imageName = getCategoryMapIconName(iconKey);
+
+      if (map.hasImage(imageName)) return;
+
+      const image = await loadMapImageFromSvg(svg);
+
+      if (!map.hasImage(imageName)) {
+        map.addImage(imageName, image, { sdf: true });
+      }
+    })
+  );
+}
+
 function addEventLayers(map) {
   if (map.getSource(EVENT_SOURCE_ID)) return;
 
@@ -308,7 +339,7 @@ function addEventLayers(map) {
         40,
         52,
       ],
-      "circle-stroke-color": "#ffffff",
+      "circle-stroke-color": "#111827",
       "circle-stroke-width": 3,
       "circle-opacity": 0.96,
     },
@@ -367,7 +398,7 @@ function addEventLayers(map) {
         20,
         39,
       ],
-      "circle-stroke-color": "#ffffff",
+      "circle-stroke-color": "#111827",
       "circle-stroke-width": 3,
       "circle-opacity": 0.97,
     },
@@ -410,7 +441,7 @@ function addEventLayers(map) {
         "case",
         ["==", ["get", "selected"], 1],
         "#ef4444",
-        "#ffffff",
+        "#111827",
       ],
       "circle-stroke-width": ["case", ["==", ["get", "selected"], 1], 4, 2],
       "circle-opacity": 0.98,
@@ -423,38 +454,13 @@ function addEventLayers(map) {
     source: EVENT_SOURCE_ID,
     filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "eventCount"], 1]],
     layout: {
-      "text-field": [
-        "match",
-        ["get", "category"],
-        "music",
-        "♪",
-        "festival",
-        "✦",
-        "comedy",
-        "☺",
-        "art",
-        "▧",
-        "food",
-        "♨",
-        "workshop",
-        "⚒",
-        "career",
-        "▣",
-        "student",
-        "◈",
-        "nightlife",
-        "☾",
-        "free",
-        "$",
-        "•",
-      ],
-      "text-size": 17,
-      "text-font": ["Noto Sans Bold"],
-      "text-allow-overlap": true,
-      "text-ignore-placement": true,
+      "icon-image": ["get", "iconImage"],
+      "icon-size": ["case", ["==", ["get", "selected"], 1], 0.42, 0.38],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
     },
     paint: {
-      "text-color": [
+      "icon-color": [
         "case",
         ["==", ["get", "selected"], 1],
         "#ef4444",
@@ -476,6 +482,7 @@ export default function EventMap({
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
   const destinationMarkerRef = useRef(null);
+  const suppressNextSelectedFlyRef = useRef(false);
 
   const eventsRef = useRef(events);
   const onSelectEventRef = useRef(onSelectEvent);
@@ -548,15 +555,18 @@ export default function EventMap({
         const group = createAreaGroupFromLeaves(leaves, eventsRef.current);
 
         if (group && onSelectLocationGroupRef.current) {
+          suppressNextSelectedFlyRef.current = true;
           onSelectLocationGroupRef.current(group);
         }
 
         const expansionZoom = await getClusterExpansionZoomAsync(source, clusterId);
+        const currentZoom = map.getZoom();
+        const targetZoom = Math.min(expansionZoom, currentZoom + 1.7, 15);
 
         map.easeTo({
           center: coordinates,
-          zoom: Math.min(expansionZoom + 0.4, 16),
-          duration: 550,
+          zoom: targetZoom,
+          duration: 650,
         });
       } catch (error) {
         console.error("Could not expand event cluster:", error);
@@ -573,14 +583,31 @@ export default function EventMap({
       if (!group) return;
 
       if (group.events.length > 1 && onSelectLocationGroupRef.current) {
+        suppressNextSelectedFlyRef.current = true;
         onSelectLocationGroupRef.current(group);
+
+        const currentZoom = map.getZoom();
+        const targetZoom = Math.max(currentZoom, Math.min(currentZoom + 1.4, 14));
+
+        map.easeTo({
+          center: [group.lng, group.lat],
+          zoom: targetZoom,
+          duration: 550,
+        });
+
         return;
       }
 
       onSelectEventRef.current?.(group.primaryEvent);
     };
 
-    const bindEventLayerHandlers = () => {
+    const bindEventLayerHandlers = async () => {
+      try {
+        await addCategoryMapIcons(map);
+      } catch (error) {
+        console.error("Could not load category map icons:", error);
+      }
+
       addEventLayers(map);
 
       const source = map.getSource(EVENT_SOURCE_ID);
@@ -621,6 +648,11 @@ export default function EventMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedEvent?.lat || !selectedEvent?.lng) return;
+
+    if (suppressNextSelectedFlyRef.current) {
+      suppressNextSelectedFlyRef.current = false;
+      return;
+    }
 
     map.flyTo({
       center: [selectedEvent.lng, selectedEvent.lat],

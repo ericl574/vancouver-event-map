@@ -1,35 +1,8 @@
+import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
-import {
-  IconMusic,
-  IconFestival,
-  IconComedy,
-  IconArt,
-  IconFood,
-  IconWorkshop,
-  IconCareer,
-  IconStudent,
-  IconNightlife,
-  IconFree,
-  IconEvent,
-} from "./Icons";
-
-const categoryIconMap = {
-  music: IconMusic,
-  festival: IconFestival,
-  comedy: IconComedy,
-  art: IconArt,
-  food: IconFood,
-  workshop: IconWorkshop,
-  career: IconCareer,
-  student: IconStudent,
-  nightlife: IconNightlife,
-  free: IconFree,
-  event: IconEvent,
-};
 
 export default function EventCard({ event, isSelected, onClick }) {
   const category = getCategoryById(event.category);
-  const Icon = categoryIconMap[category.icon] ?? IconEvent;
 
   return (
     <button
@@ -49,7 +22,7 @@ export default function EventCard({ event, isSelected, onClick }) {
               : "bg-slate-50 text-slate-500"
           }`}
         >
-          <Icon className="h-4.5 w-4.5" />
+          <CategoryIcon icon={category.icon} className="h-4.5 w-4.5" />
         </span>
 
         <div className="min-w-0 flex-1">

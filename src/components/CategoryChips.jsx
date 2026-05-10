@@ -1,32 +1,5 @@
+import CategoryIcon from "./CategoryIcon";
 import { categories } from "../data/categories";
-import {
-  IconAll,
-  IconMusic,
-  IconFestival,
-  IconComedy,
-  IconArt,
-  IconFood,
-  IconWorkshop,
-  IconCareer,
-  IconStudent,
-  IconNightlife,
-  IconFree,
-  IconEvent,
-} from "./Icons";
-
-const categoryIconMap = {
-  music: IconMusic,
-  festival: IconFestival,
-  comedy: IconComedy,
-  art: IconArt,
-  food: IconFood,
-  workshop: IconWorkshop,
-  career: IconCareer,
-  student: IconStudent,
-  nightlife: IconNightlife,
-  free: IconFree,
-  event: IconEvent,
-};
 
 export default function CategoryChips({ selectedCategory, onSelectCategory }) {
   const selectedClass =
@@ -47,7 +20,8 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
           selectedCategory === "all" ? selectedClass : unselectedClass
         }`}
       >
-        <IconAll
+        <CategoryIcon
+          icon="all"
           className={`h-4 w-4 ${
             selectedCategory === "all" ? "text-rose-700" : "text-slate-500"
           }`}
@@ -57,7 +31,6 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
 
       {categories.map((category) => {
         const isSelected = selectedCategory === category.id;
-        const Icon = categoryIconMap[category.icon] ?? IconEvent;
 
         return (
           <button
@@ -69,7 +42,8 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
               isSelected ? selectedClass : unselectedClass
             }`}
           >
-            <Icon
+            <CategoryIcon
+              icon={category.icon}
               className={`h-4 w-4 ${
                 isSelected ? "text-rose-700" : "text-slate-500"
               }`}
