@@ -92,20 +92,53 @@ function mapDatabaseEventToFrontendEvent(event, index) {
     index
   );
 }
+function normalizeDedupeValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
 
+function getEventDedupeKey(event) {
+  if (event.source_url) {
+    return `source:${normalizeDedupeValue(event.source_url)}`;
+  }
+
+  return [
+    "fallback",
+    normalizeDedupeValue(event.title),
+    normalizeDedupeValue(event.event_date),
+    normalizeDedupeValue(event.start_time),
+    normalizeDedupeValue(event.venue),
+  ].join("|");
+}
+
+function dedupeDatabaseEvents(events) {
+  const seenKeys = new Set();
+
+  return events.filter((event) => {
+    const key = getEventDedupeKey(event);
+
+    if (seenKeys.has(key)) {
+      return false;
+    }
+
+    seenKeys.add(key);
+    return true;
+  });
+}
 export async function getApprovedEvents() {
   const { data, error } = await supabase
     .from("events")
     .select("*")
     .eq("status", "approved")
     .order("event_date", { ascending: true })
-    .order("start_time", { ascending: true });
+    .order("created_at", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map(mapDatabaseEventToFrontendEvent);
+  const dedupedEvents = dedupeDatabaseEvents(data || []);
+
+  return dedupedEvents.map(mapDatabaseEventToFrontendEvent);
 }
 
 export async function getPendingEvents() {
