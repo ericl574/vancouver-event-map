@@ -76,42 +76,72 @@ function getGroupCategory(group) {
   };
 }
 
+function getCategoryMarkerSvg(categoryId) {
+  const iconStyle =
+    'width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"';
+
+  const icons = {
+    music: `<svg ${iconStyle}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
+    festival: `<svg ${iconStyle}><path d="M4 20h16"/><path d="M6 20l6-16 6 16"/><path d="M8.5 13h7"/><path d="M10 9h4"/></svg>`,
+    comedy: `<svg ${iconStyle}><circle cx="12" cy="12" r="9"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 15c1.2 1 2.5 1.5 4 1.5s2.8-.5 4-1.5"/></svg>`,
+    art: `<svg ${iconStyle}><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>`,
+    food: `<svg ${iconStyle}><path d="M4 3v8"/><path d="M8 3v8"/><path d="M4 7h4"/><path d="M6 11v10"/><path d="M17 3v18"/><path d="M14 3h3a3 3 0 0 1 3 3v5h-3"/></svg>`,
+    workshop: `<svg ${iconStyle}><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-3 3-3-3 3-3Z"/></svg>`,
+    career: `<svg ${iconStyle}><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>`,
+    student: `<svg ${iconStyle}><path d="M22 10L12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c2 1.3 4 2 6 2s4-.7 6-2v-5"/></svg>`,
+    nightlife: `<svg ${iconStyle}><path d="M12 3a7 7 0 1 0 8.5 8.5A5.5 5.5 0 0 1 12 3Z"/></svg>`,
+    free: `<svg ${iconStyle}><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
+    event: `<svg ${iconStyle}><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M4 10h16"/></svg>`,
+  };
+
+  return icons[categoryId] || icons.event;
+}
+
 function createEventMarkerElement(group, isSelected = false) {
   const marker = document.createElement("div");
   const category = getGroupCategory(group);
   const count = group.events.length;
   const isGrouped = count > 1;
 
-  const size = isSelected ? 34 : isGrouped ? 32 : 16;
-
-  const background = isGrouped
-    ? "#0f172a" // grouped markers are always navy
-    : category.hex || "#2563eb";
-
-  marker.style.width = `${size}px`;
-  marker.style.height = `${size}px`;
   marker.style.borderRadius = "9999px";
-  marker.style.background = background;
   marker.style.border = "2px solid white";
   marker.style.cursor = "pointer";
   marker.style.display = "flex";
   marker.style.alignItems = "center";
   marker.style.justifyContent = "center";
-  marker.style.color = "white";
-  marker.style.fontSize = isGrouped ? "13px" : "0px";
-  marker.style.fontWeight = "800";
-  marker.style.lineHeight = "1";
   marker.style.userSelect = "none";
 
-  marker.style.boxShadow = isSelected
-    ? "0 0 0 4px rgba(244, 63, 94, 0.35), 0 0 0 9px rgba(244, 63, 94, 0.16), 0 10px 22px rgba(15, 23, 42, 0.28)"
-    : isGrouped
-      ? "0 0 0 5px rgba(15, 23, 42, 0.16), 0 8px 18px rgba(15, 23, 42, 0.24)"
-      : "0 0 0 5px rgba(15, 23, 42, 0.08), 0 6px 14px rgba(15, 23, 42, 0.16)";
-
   if (isGrouped) {
+    const size = isSelected ? 38 : 34;
+
+    marker.style.width = `${size}px`;
+    marker.style.height = `${size}px`;
+    marker.style.background = "#2563eb";
+    marker.style.color = "white";
+    marker.style.fontSize = "13px";
+    marker.style.fontWeight = "900";
+    marker.style.lineHeight = "1";
     marker.textContent = String(count);
+
+    marker.style.boxShadow = isSelected
+      ? "0 0 0 4px rgba(37, 99, 235, 0.38), 0 0 0 9px rgba(37, 99, 235, 0.16), 0 10px 24px rgba(15, 23, 42, 0.3)"
+      : "0 0 0 4px rgba(37, 99, 235, 0.16), 0 8px 18px rgba(15, 23, 42, 0.24)";
+
+    return marker;
   }
+
+  const size = isSelected ? 32 : 28;
+
+  marker.style.width = `${size}px`;
+  marker.style.height = `${size}px`;
+  marker.style.background = "rgba(255, 255, 255, 0.97)";
+  marker.style.color = isSelected ? "#2563eb" : "#334155";
+
+  marker.style.boxShadow = isSelected
+    ? "0 0 0 4px rgba(37, 99, 235, 0.36), 0 0 0 9px rgba(37, 99, 235, 0.14), 0 10px 24px rgba(15, 23, 42, 0.28)"
+    : "0 0 0 3px rgba(15, 23, 42, 0.06), 0 6px 14px rgba(15, 23, 42, 0.16)";
+
+  marker.innerHTML = getCategoryMarkerSvg(category.icon || category.id);
 
   return marker;
 }
