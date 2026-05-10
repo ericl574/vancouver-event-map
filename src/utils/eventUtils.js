@@ -25,6 +25,18 @@ function getEventStartDate(event) {
   return parsedDate;
 }
 
+function getEventDateString(event) {
+  const eventDate =
+    event.event_date ??
+    event.eventDate ??
+    event.rawEventDate ??
+    null;
+
+  if (!eventDate) return "";
+
+  return String(eventDate).slice(0, 10);
+}
+
 function getTimeRangeLimit(timeRange) {
   const oneDay = 24 * 60 * 60 * 1000;
 
@@ -34,6 +46,14 @@ function getTimeRangeLimit(timeRange) {
   if (timeRange === "1w") return 7 * oneDay;
 
   return null;
+}
+
+function matchesExactDate(event, exactDate) {
+  if (!exactDate) {
+    return true;
+  }
+
+  return getEventDateString(event) === exactDate;
 }
 
 function matchesTimeRange(event, timeRange) {
@@ -93,8 +113,18 @@ export function filterEvents(events, selectedCategory, query, filters = {}) {
 
     const matchesStatus = !event.status || event.status === "approved";
 
-    const matchesTime = matchesTimeRange(event, filters.timeRange);
+    const matchesDate = matchesExactDate(event, filters.exactDate);
 
-    return matchesCategory && matchesQuery && matchesStatus && matchesTime;
+    const matchesTime = filters.exactDate
+      ? true
+      : matchesTimeRange(event, filters.timeRange);
+
+    return (
+      matchesCategory &&
+      matchesQuery &&
+      matchesStatus &&
+      matchesDate &&
+      matchesTime
+    );
   });
 }

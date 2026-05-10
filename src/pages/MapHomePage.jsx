@@ -19,8 +19,9 @@ export default function MapHomePage() {
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
-    timeRange: "all",
-  });
+  timeRange: "all",
+  exactDate: "",
+});
 
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState("");
@@ -163,10 +164,11 @@ export default function MapHomePage() {
   }
 
   function handleResetFilters() {
-    setFilters({
-      timeRange: "all",
-    });
-  }
+  setFilters({
+    timeRange: "all",
+    exactDate: "",
+  });
+}
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100 text-slate-900">
