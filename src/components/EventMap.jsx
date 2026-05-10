@@ -5,6 +5,14 @@ import { getCategoryById } from "../data/categories";
 
 const GREATER_VANCOUVER_CENTER = [-123.1162, 49.2463];
 
+const EVENT_SOURCE_ID = "event-points";
+const EVENT_CLUSTER_LAYER_ID = "event-clusters";
+const EVENT_CLUSTER_COUNT_LAYER_ID = "event-cluster-count";
+const EVENT_LOCATION_GROUP_LAYER_ID = "event-location-groups";
+const EVENT_LOCATION_GROUP_COUNT_LAYER_ID = "event-location-group-count";
+const EVENT_SINGLE_BG_LAYER_ID = "event-single-bg";
+const EVENT_SINGLE_ICON_LAYER_ID = "event-single-icon";
+
 function getLocationGroupKey(event) {
   const lat = Number(event.lat);
   const lng = Number(event.lng);
@@ -13,20 +21,18 @@ function getLocationGroupKey(event) {
     return "";
   }
 
-  // 5 decimals is about 1 meter precision, enough to group same-location events.
   return `${lat.toFixed(5)},${lng.toFixed(5)}`;
 }
 
 function getEventSortValue(event) {
   const date = event.event_date || event.eventDate || "";
   const time = event.start_time || event.rawStartTime || "23:59:59";
-
   const timestamp = new Date(`${date}T${time}`).getTime();
 
   return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
 }
 
-function groupEventsByLocation(events) {
+function groupEventsByExactLocation(events, selectedEvent) {
   const groupMap = new Map();
 
   events.forEach((event) => {
@@ -51,99 +57,155 @@ function groupEventsByLocation(events) {
       (a, b) => getEventSortValue(a) - getEventSortValue(b)
     );
 
+    const firstVenue = sortedEvents[0]?.venue || "";
+    const allSameVenue = sortedEvents.every((event) => event.venue === firstVenue);
+    const selected = sortedEvents.some((event) => event.id === selectedEvent?.id);
+
     return {
       ...group,
       events: sortedEvents,
       primaryEvent: sortedEvents[0],
+      venue: allSameVenue ? firstVenue : "Nearby events",
+      selected,
     };
   });
 }
 
-function getGroupCategory(group) {
-  const firstCategory = group.primaryEvent?.category;
-  const allSameCategory = group.events.every(
-    (event) => event.category === firstCategory
-  );
-
-  if (allSameCategory) {
-    return getCategoryById(firstCategory);
-  }
+function createEventGeoJson(events, selectedEvent) {
+  const groups = groupEventsByExactLocation(events, selectedEvent);
 
   return {
-    id: "mixed",
-    label: "Multiple events",
-    hex: "#e11d48",
+    type: "FeatureCollection",
+    features: groups.map((group) => {
+      const primaryEvent = group.primaryEvent;
+      const category = getCategoryById(primaryEvent?.category);
+      const eventIds = group.events.map((event) => String(event.id)).join("|");
+
+      return {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [group.lng, group.lat],
+        },
+        properties: {
+          key: group.key,
+          eventIds,
+          primaryEventId: String(primaryEvent?.id ?? ""),
+          eventCount: group.events.length,
+          selected: group.selected ? 1 : 0,
+          category: category.id || primaryEvent?.category || "event",
+          categoryIcon: category.icon || "event",
+          venue: group.venue || "This location",
+        },
+      };
+    }),
   };
 }
 
-function getCategoryMarkerSvg(categoryId) {
-  const iconStyle =
-    'width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"';
-
-  const icons = {
-    music: `<svg ${iconStyle}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
-    festival: `<svg ${iconStyle}><path d="M4 20h16"/><path d="M6 20l6-16 6 16"/><path d="M8.5 13h7"/><path d="M10 9h4"/></svg>`,
-    comedy: `<svg ${iconStyle}><circle cx="12" cy="12" r="9"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 15c1.2 1 2.5 1.5 4 1.5s2.8-.5 4-1.5"/></svg>`,
-    art: `<svg ${iconStyle}><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>`,
-    food: `<svg ${iconStyle}><path d="M4 3v8"/><path d="M8 3v8"/><path d="M4 7h4"/><path d="M6 11v10"/><path d="M17 3v18"/><path d="M14 3h3a3 3 0 0 1 3 3v5h-3"/></svg>`,
-    workshop: `<svg ${iconStyle}><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-3 3-3-3 3-3Z"/></svg>`,
-    career: `<svg ${iconStyle}><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>`,
-    student: `<svg ${iconStyle}><path d="M22 10L12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c2 1.3 4 2 6 2s4-.7 6-2v-5"/></svg>`,
-    nightlife: `<svg ${iconStyle}><path d="M12 3a7 7 0 1 0 8.5 8.5A5.5 5.5 0 0 1 12 3Z"/></svg>`,
-    free: `<svg ${iconStyle}><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
-    event: `<svg ${iconStyle}><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M4 10h16"/></svg>`,
-  };
-
-  return icons[categoryId] || icons.event;
+function getEventIdsFromFeature(feature) {
+  return String(feature?.properties?.eventIds || "")
+    .split("|")
+    .map((id) => id.trim())
+    .filter(Boolean);
 }
 
-function createEventMarkerElement(group, isSelected = false) {
-  const marker = document.createElement("div");
-  const category = getGroupCategory(group);
-  const count = group.events.length;
-  const isGrouped = count > 1;
+function buildLocationGroupFromFeature(feature, events) {
+  const eventIds = getEventIdsFromFeature(feature);
+  const eventIdSet = new Set(eventIds);
 
-  marker.style.borderRadius = "9999px";
-  marker.style.border = "2px solid white";
-  marker.style.cursor = "pointer";
-  marker.style.display = "flex";
-  marker.style.alignItems = "center";
-  marker.style.justifyContent = "center";
-  marker.style.userSelect = "none";
+  const groupEvents = events
+    .filter((event) => eventIdSet.has(String(event.id)))
+    .sort((a, b) => getEventSortValue(a) - getEventSortValue(b));
 
-  if (isGrouped) {
-    const size = isSelected ? 38 : 34;
+  if (groupEvents.length === 0) return null;
 
-    marker.style.width = `${size}px`;
-    marker.style.height = `${size}px`;
-    marker.style.background = "#2563eb";
-    marker.style.color = "white";
-    marker.style.fontSize = "13px";
-    marker.style.fontWeight = "900";
-    marker.style.lineHeight = "1";
-    marker.textContent = String(count);
+  return {
+    key: feature.properties?.key || String(feature.id || ""),
+    lat: Number(feature.geometry?.coordinates?.[1]),
+    lng: Number(feature.geometry?.coordinates?.[0]),
+    venue: feature.properties?.venue || groupEvents[0]?.venue || "Nearby events",
+    events: groupEvents,
+    primaryEvent: groupEvents[0],
+    isAreaCluster: false,
+  };
+}
 
-    marker.style.boxShadow = isSelected
-      ? "0 0 0 4px rgba(37, 99, 235, 0.38), 0 0 0 9px rgba(37, 99, 235, 0.16), 0 10px 24px rgba(15, 23, 42, 0.3)"
-      : "0 0 0 4px rgba(37, 99, 235, 0.16), 0 8px 18px rgba(15, 23, 42, 0.24)";
+function createAreaGroupFromLeaves(leaves, events) {
+  const eventIdSet = new Set();
 
-    return marker;
-  }
+  leaves.forEach((leaf) => {
+    getEventIdsFromFeature(leaf).forEach((id) => eventIdSet.add(id));
+  });
 
-  const size = isSelected ? 32 : 28;
+  const groupEvents = events
+    .filter((event) => eventIdSet.has(String(event.id)))
+    .sort((a, b) => getEventSortValue(a) - getEventSortValue(b));
 
-  marker.style.width = `${size}px`;
-  marker.style.height = `${size}px`;
-  marker.style.background = "rgba(255, 255, 255, 0.97)";
-  marker.style.color = isSelected ? "#2563eb" : "#334155";
+  if (groupEvents.length === 0) return null;
 
-  marker.style.boxShadow = isSelected
-    ? "0 0 0 4px rgba(37, 99, 235, 0.36), 0 0 0 9px rgba(37, 99, 235, 0.14), 0 10px 24px rgba(15, 23, 42, 0.28)"
-    : "0 0 0 3px rgba(15, 23, 42, 0.06), 0 6px 14px rgba(15, 23, 42, 0.16)";
+  const lat =
+    groupEvents.reduce((sum, event) => sum + Number(event.lat), 0) /
+    groupEvents.length;
 
-  marker.innerHTML = getCategoryMarkerSvg(category.icon || category.id);
+  const lng =
+    groupEvents.reduce((sum, event) => sum + Number(event.lng), 0) /
+    groupEvents.length;
 
-  return marker;
+  return {
+    key: `cluster-${groupEvents.map((event) => event.id).join("-")}`,
+    lat,
+    lng,
+    venue: "Nearby events",
+    events: groupEvents,
+    primaryEvent: groupEvents[0],
+    isAreaCluster: true,
+  };
+}
+
+function getClusterLeavesAsync(source, clusterId, limit = 1000, offset = 0) {
+  return new Promise((resolve, reject) => {
+    const maybePromise = source.getClusterLeaves(
+      clusterId,
+      limit,
+      offset,
+      (error, leaves) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(leaves || []);
+      }
+    );
+
+    if (maybePromise?.then) {
+      maybePromise.then(resolve).catch(reject);
+    } else if (Array.isArray(maybePromise)) {
+      resolve(maybePromise);
+    }
+  });
+}
+
+function getClusterExpansionZoomAsync(source, clusterId) {
+  return new Promise((resolve, reject) => {
+    const maybePromise = source.getClusterExpansionZoom(
+      clusterId,
+      (error, zoom) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(zoom);
+      }
+    );
+
+    if (maybePromise?.then) {
+      maybePromise.then(resolve).catch(reject);
+    } else if (typeof maybePromise === "number") {
+      resolve(maybePromise);
+    }
+  });
 }
 
 function createUserLocationElement() {
@@ -158,6 +220,7 @@ function createUserLocationElement() {
 
   return marker;
 }
+
 function createDestinationLocationElement() {
   const wrapper = document.createElement("div");
 
@@ -175,12 +238,11 @@ function createDestinationLocationElement() {
         top: 0;
         width: 34px;
         height: 34px;
-        transform: translateX(-50%);
+        transform: translateX(-50%) rotate(-45deg);
         border-radius: 9999px 9999px 9999px 0;
         background: #ef4444;
         border: 3px solid white;
-        rotate: -45deg;
-        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.18);
+        box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.14);
       "
     >
       <div
@@ -188,8 +250,8 @@ function createDestinationLocationElement() {
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 12px;
-          height: 12px;
+          width: 11px;
+          height: 11px;
           transform: translate(-50%, -50%);
           border-radius: 9999px;
           background: white;
@@ -201,82 +263,205 @@ function createDestinationLocationElement() {
   return wrapper;
 }
 
-function createSingleEventPopupHtml(event, category) {
-  return `
-    <div style="min-width: 190px;">
-      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
-        ${category.label}
-      </p>
+function addEventLayers(map) {
+  if (map.getSource(EVENT_SOURCE_ID)) return;
 
-      <h3 style="margin: 0 0 6px; font-size: 15px; font-weight: 800; color: #0f172a;">
-        ${event.title}
-      </h3>
+  map.addSource(EVENT_SOURCE_ID, {
+    type: "geojson",
+    data: {
+      type: "FeatureCollection",
+      features: [],
+    },
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 56,
+    clusterProperties: {
+      event_count: ["+", ["get", "eventCount"]],
+      selected_count: ["+", ["get", "selected"]],
+    },
+  });
 
-      <p style="margin: 0 0 4px; font-size: 13px; color: #475569;">
-        ${event.venue || ""}${event.area ? ` · ${event.area}` : ""}
-      </p>
+  map.addLayer({
+    id: EVENT_CLUSTER_LAYER_ID,
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: ["has", "point_count"],
+    paint: {
+      "circle-color": [
+        "case",
+        [">", ["coalesce", ["get", "selected_count"], 0], 0],
+        "#ef4444",
+        "#2563eb",
+      ],
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["coalesce", ["get", "event_count"], ["get", "point_count"]],
+        2,
+        18,
+        5,
+        23,
+        10,
+        30,
+        20,
+        39,
+        40,
+        52,
+      ],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 3,
+      "circle-opacity": 0.96,
+    },
+  });
 
-      <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #0f172a;">
-        ${event.date || ""}${event.startTime ? ` · ${event.startTime}` : ""}
-      </p>
+  map.addLayer({
+    id: EVENT_CLUSTER_COUNT_LAYER_ID,
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: ["has", "point_count"],
+    layout: {
+      "text-field": [
+        "to-string",
+        ["coalesce", ["get", "event_count"], ["get", "point_count"]],
+      ],
+      "text-size": [
+        "interpolate",
+        ["linear"],
+        ["coalesce", ["get", "event_count"], ["get", "point_count"]],
+        2,
+        12,
+        10,
+        14,
+        20,
+        16,
+      ],
+      "text-font": ["Noto Sans Bold"],
+    },
+    paint: {
+      "text-color": "#ffffff",
+    },
+  });
 
-      <p style="margin: 0; font-size: 13px; color: #334155;">
-        ${event.price || ""}
-      </p>
+  map.addLayer({
+    id: EVENT_LOCATION_GROUP_LAYER_ID,
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: ["all", ["!", ["has", "point_count"]], [">", ["get", "eventCount"], 1]],
+    paint: {
+      "circle-color": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        "#ef4444",
+        "#2563eb",
+      ],
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["get", "eventCount"],
+        2,
+        18,
+        5,
+        23,
+        10,
+        30,
+        20,
+        39,
+      ],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 3,
+      "circle-opacity": 0.97,
+    },
+  });
 
-      ${
-        event.distanceKm !== undefined
-          ? `<p style="margin: 4px 0 0; font-size: 12px; font-weight: 600; color: #64748b;">
-              ${event.distanceKm.toFixed(1)} km away
-            </p>`
-          : ""
-      }
-    </div>
-  `;
-}
+  map.addLayer({
+    id: EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: ["all", ["!", ["has", "point_count"]], [">", ["get", "eventCount"], 1]],
+    layout: {
+      "text-field": ["to-string", ["get", "eventCount"]],
+      "text-size": [
+        "interpolate",
+        ["linear"],
+        ["get", "eventCount"],
+        2,
+        12,
+        10,
+        14,
+        20,
+        16,
+      ],
+      "text-font": ["Noto Sans Bold"],
+    },
+    paint: {
+      "text-color": "#ffffff",
+    },
+  });
 
-function createGroupedPopupHtml(group) {
-  const venue = group.primaryEvent?.venue || "This location";
-  const visibleEvents = group.events.slice(0, 5);
+  map.addLayer({
+    id: EVENT_SINGLE_BG_LAYER_ID,
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "eventCount"], 1]],
+    paint: {
+      "circle-color": "rgba(255, 255, 255, 0.97)",
+      "circle-radius": ["case", ["==", ["get", "selected"], 1], 16, 14],
+      "circle-stroke-color": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        "#ef4444",
+        "#ffffff",
+      ],
+      "circle-stroke-width": ["case", ["==", ["get", "selected"], 1], 4, 2],
+      "circle-opacity": 0.98,
+    },
+  });
 
-  const eventRows = visibleEvents
-    .map(
-      (event) => `
-        <div style="padding: 8px 0; border-top: 1px solid #e2e8f0;">
-          <p style="margin: 0 0 2px; font-size: 13px; font-weight: 800; color: #0f172a;">
-            ${event.title}
-          </p>
-          <p style="margin: 0; font-size: 12px; color: #475569;">
-            ${event.date || ""}${event.startTime ? ` · ${event.startTime}` : ""}${event.price ? ` · ${event.price}` : ""}
-          </p>
-        </div>
-      `
-    )
-    .join("");
-
-  const remainingCount = group.events.length - visibleEvents.length;
-
-  return `
-    <div style="min-width: 230px;">
-      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
-        ${group.events.length} events at this location
-      </p>
-
-      <h3 style="margin: 0 0 8px; font-size: 15px; font-weight: 800; color: #0f172a;">
-        ${venue}
-      </h3>
-
-      ${eventRows}
-
-      ${
-        remainingCount > 0
-          ? `<p style="margin: 8px 0 0; font-size: 12px; font-weight: 700; color: #64748b;">
-              +${remainingCount} more event${remainingCount === 1 ? "" : "s"}
-            </p>`
-          : ""
-      }
-    </div>
-  `;
+  map.addLayer({
+    id: EVENT_SINGLE_ICON_LAYER_ID,
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "eventCount"], 1]],
+    layout: {
+      "text-field": [
+        "match",
+        ["get", "category"],
+        "music",
+        "♪",
+        "festival",
+        "✦",
+        "comedy",
+        "☺",
+        "art",
+        "▧",
+        "food",
+        "♨",
+        "workshop",
+        "⚒",
+        "career",
+        "▣",
+        "student",
+        "◈",
+        "nightlife",
+        "☾",
+        "free",
+        "$",
+        "•",
+      ],
+      "text-size": 17,
+      "text-font": ["Noto Sans Bold"],
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+    },
+    paint: {
+      "text-color": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        "#ef4444",
+        "#334155",
+      ],
+    },
+  });
 }
 
 export default function EventMap({
@@ -288,19 +473,38 @@ export default function EventMap({
   destinationLocation,
 }) {
   const mapContainerRef = useRef(null);
-const mapRef = useRef(null);
-const eventMarkersRef = useRef([]);
-const userMarkerRef = useRef(null);
-const destinationMarkerRef = useRef(null);
+  const mapRef = useRef(null);
+  const userMarkerRef = useRef(null);
+  const destinationMarkerRef = useRef(null);
 
-  const locationGroups = useMemo(() => {
-    return groupEventsByLocation(events);
-  }, [events]);
+  const eventsRef = useRef(events);
+  const onSelectEventRef = useRef(onSelectEvent);
+  const onSelectLocationGroupRef = useRef(onSelectLocationGroup);
+
+  const eventGeoJson = useMemo(() => {
+    return createEventGeoJson(events, selectedEvent);
+  }, [events, selectedEvent]);
+
+  const eventGeoJsonRef = useRef(eventGeoJson);
+
+  useEffect(() => {
+    eventsRef.current = events;
+    onSelectEventRef.current = onSelectEvent;
+    onSelectLocationGroupRef.current = onSelectLocationGroup;
+    eventGeoJsonRef.current = eventGeoJson;
+
+    const map = mapRef.current;
+    const source = map?.getSource(EVENT_SOURCE_ID);
+
+    if (source?.setData) {
+      source.setData(eventGeoJson);
+    }
+  }, [events, onSelectEvent, onSelectLocationGroup, eventGeoJson]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    mapRef.current = new maplibregl.Map({
+    const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: "https://tiles.openfreemap.org/styles/liberty",
       center: GREATER_VANCOUVER_CENTER,
@@ -310,85 +514,122 @@ const destinationMarkerRef = useRef(null);
       attributionControl: false,
     });
 
-    mapRef.current.scrollZoom.setZoomRate(1 / 25);
-    mapRef.current.scrollZoom.setWheelZoomRate(1 / 150);
+    mapRef.current = map;
 
-    mapRef.current.addControl(
+    map.scrollZoom.setZoomRate(1 / 25);
+    map.scrollZoom.setWheelZoomRate(1 / 150);
+
+    map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
       }),
       "bottom-right"
     );
 
+    const setPointerCursor = () => {
+      map.getCanvas().style.cursor = "pointer";
+    };
+
+    const clearPointerCursor = () => {
+      map.getCanvas().style.cursor = "";
+    };
+
+    const handleClusterClick = async (event) => {
+      const feature = event.features?.[0];
+      const clusterId = feature?.properties?.cluster_id;
+      const coordinates = feature?.geometry?.coordinates;
+
+      if (!feature || clusterId === undefined || !coordinates) return;
+
+      const source = map.getSource(EVENT_SOURCE_ID);
+
+      try {
+        const leaves = await getClusterLeavesAsync(source, clusterId);
+        const group = createAreaGroupFromLeaves(leaves, eventsRef.current);
+
+        if (group && onSelectLocationGroupRef.current) {
+          onSelectLocationGroupRef.current(group);
+        }
+
+        const expansionZoom = await getClusterExpansionZoomAsync(source, clusterId);
+
+        map.easeTo({
+          center: coordinates,
+          zoom: Math.min(expansionZoom + 0.4, 16),
+          duration: 550,
+        });
+      } catch (error) {
+        console.error("Could not expand event cluster:", error);
+      }
+    };
+
+    const handlePointClick = (event) => {
+      const feature = event.features?.[0];
+
+      if (!feature) return;
+
+      const group = buildLocationGroupFromFeature(feature, eventsRef.current);
+
+      if (!group) return;
+
+      if (group.events.length > 1 && onSelectLocationGroupRef.current) {
+        onSelectLocationGroupRef.current(group);
+        return;
+      }
+
+      onSelectEventRef.current?.(group.primaryEvent);
+    };
+
+    const bindEventLayerHandlers = () => {
+      addEventLayers(map);
+
+      const source = map.getSource(EVENT_SOURCE_ID);
+
+      if (source?.setData) {
+        source.setData(eventGeoJsonRef.current);
+      }
+
+      map.on("click", EVENT_CLUSTER_LAYER_ID, handleClusterClick);
+      map.on("click", EVENT_CLUSTER_COUNT_LAYER_ID, handleClusterClick);
+
+      map.on("click", EVENT_LOCATION_GROUP_LAYER_ID, handlePointClick);
+      map.on("click", EVENT_LOCATION_GROUP_COUNT_LAYER_ID, handlePointClick);
+      map.on("click", EVENT_SINGLE_BG_LAYER_ID, handlePointClick);
+      map.on("click", EVENT_SINGLE_ICON_LAYER_ID, handlePointClick);
+
+      [
+        EVENT_CLUSTER_LAYER_ID,
+        EVENT_CLUSTER_COUNT_LAYER_ID,
+        EVENT_LOCATION_GROUP_LAYER_ID,
+        EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
+        EVENT_SINGLE_BG_LAYER_ID,
+        EVENT_SINGLE_ICON_LAYER_ID,
+      ].forEach((layerId) => {
+        map.on("mouseenter", layerId, setPointerCursor);
+        map.on("mouseleave", layerId, clearPointerCursor);
+      });
+    };
+
+    map.on("load", bindEventLayerHandlers);
+
     return () => {
-      mapRef.current?.remove();
+      map.remove();
       mapRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !selectedEvent?.lat || !selectedEvent?.lng) return;
 
-    eventMarkersRef.current.forEach((marker) => marker.remove());
-    eventMarkersRef.current = [];
-
-    locationGroups.forEach((group) => {
-      if (!group.lat || !group.lng) return;
-
-      const containsSelectedEvent = group.events.some(
-        (event) => event.id === selectedEvent?.id
-      );
-
-      const markerElement = createEventMarkerElement(
-        group,
-        containsSelectedEvent
-      );
-
-      markerElement.addEventListener("click", () => {
-        if (group.events.length > 1 && onSelectLocationGroup) {
-          onSelectLocationGroup(group);
-          return;
-        }
-
-        onSelectEvent(group.primaryEvent);
-      });
-
-      const category = getCategoryById(group.primaryEvent?.category);
-
-      const popup = new maplibregl.Popup({
-        offset: 18,
-        closeButton: false,
-      }).setHTML(
-        group.events.length > 1
-          ? createGroupedPopupHtml(group)
-          : createSingleEventPopupHtml(group.primaryEvent, category)
-      );
-
-      const marker = new maplibregl.Marker({
-        element: markerElement,
-        anchor: "center",
-      })
-        .setLngLat([group.lng, group.lat])
-        .setPopup(popup)
-        .addTo(map);
-
-      eventMarkersRef.current.push(marker);
+    map.flyTo({
+      center: [selectedEvent.lng, selectedEvent.lat],
+      zoom: 15,
+      speed: 1.4,
+      curve: 1.2,
+      essential: true,
     });
-  }, [locationGroups, selectedEvent, onSelectEvent]);
-
-  useEffect(() => {
-  const map = mapRef.current;
-  if (!map || !selectedEvent?.lat || !selectedEvent?.lng) return;
-
-  map.flyTo({
-    center: [selectedEvent.lng, selectedEvent.lat],
-    zoom: 15,
-    speed: 1.4,
-    curve: 1.2,
-    essential: true,
-  });
-}, [selectedEvent]);
+  }, [selectedEvent]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -422,47 +663,48 @@ const destinationMarkerRef = useRef(null);
       essential: true,
     });
   }, [userLocation]);
+
   useEffect(() => {
-  const map = mapRef.current;
-  if (!map) return;
+    const map = mapRef.current;
+    if (!map) return;
 
-  if (destinationMarkerRef.current) {
-    destinationMarkerRef.current.remove();
-    destinationMarkerRef.current = null;
-  }
+    if (destinationMarkerRef.current) {
+      destinationMarkerRef.current.remove();
+      destinationMarkerRef.current = null;
+    }
 
-  if (!destinationLocation?.lat || !destinationLocation?.lng) return;
+    if (!destinationLocation?.lat || !destinationLocation?.lng) return;
 
-  const popup = new maplibregl.Popup({
-    offset: 18,
-    closeButton: false,
-  }).setHTML(`
-    <div style="min-width: 180px;">
-      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
-        Reference location
-      </p>
-      <p style="margin: 0; font-size: 13px; font-weight: 800; color: #0f172a;">
-        ${destinationLocation.shortLabel || "Selected location"}
-      </p>
-    </div>
-  `);
+    const popup = new maplibregl.Popup({
+      offset: 18,
+      closeButton: false,
+    }).setHTML(`
+      <div style="min-width: 180px;">
+        <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">
+          Reference location
+        </p>
+        <p style="margin: 0; font-size: 13px; font-weight: 800; color: #0f172a;">
+          ${destinationLocation.shortLabel || "Selected location"}
+        </p>
+      </div>
+    `);
 
-  destinationMarkerRef.current = new maplibregl.Marker({
-  element: createDestinationLocationElement(),
-  anchor: "bottom",
-})
-    .setLngLat([destinationLocation.lng, destinationLocation.lat])
-    .setPopup(popup)
-    .addTo(map);
+    destinationMarkerRef.current = new maplibregl.Marker({
+      element: createDestinationLocationElement(),
+      anchor: "bottom",
+    })
+      .setLngLat([destinationLocation.lng, destinationLocation.lat])
+      .setPopup(popup)
+      .addTo(map);
 
-  map.flyTo({
-  center: [destinationLocation.lng, destinationLocation.lat],
-  zoom: 15,
-  speed: 1.6,
-  curve: 1.15,
-  essential: true,
-});
-}, [destinationLocation]);
+    map.flyTo({
+      center: [destinationLocation.lng, destinationLocation.lat],
+      zoom: 15,
+      speed: 1.6,
+      curve: 1.15,
+      essential: true,
+    });
+  }, [destinationLocation]);
 
   return (
     <section
