@@ -17,6 +17,8 @@ const EVENT_LOCATION_GROUP_COUNT_LAYER_ID = "event-location-group-count";
 const EVENT_SINGLE_DOT_LAYER_ID = "event-single-dots";
 const EVENT_SINGLE_ICON_LAYER_ID = "event-single-icons";
 
+const MAP_CATEGORY_ICON_SIZE = 24;
+
 function getLocationGroupKey(event) {
   const lat = Number(event.lat);
   const lng = Number(event.lng);
@@ -295,13 +297,29 @@ function colorizeSvg(svg, color) {
   return output;
 }
 
-function svgToImage(svg) {
+function svgToImageData(svg, size = MAP_CATEGORY_ICON_SIZE) {
   return new Promise((resolve, reject) => {
     const image = new Image();
 
-    image.onload = () => resolve(image);
-    image.onerror = reject;
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
 
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        reject(new Error("Could not create canvas context for map icon."));
+        return;
+      }
+
+      context.clearRect(0, 0, size, size);
+      context.drawImage(image, 0, 0, size, size);
+
+      resolve(context.getImageData(0, 0, size, size));
+    };
+
+    image.onerror = reject;
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
 }
@@ -318,14 +336,14 @@ async function addCategoryIconImages(map) {
       const selectedSvg = colorizeSvg(svg, "#ffffff");
 
       return [
-        svgToImage(normalSvg).then((image) => {
+        svgToImageData(normalSvg).then((image) => {
           if (!map.hasImage(normalImageName)) {
             map.addImage(normalImageName, image, {
               pixelRatio: 2,
             });
           }
         }),
-        svgToImage(selectedSvg).then((image) => {
+        svgToImageData(selectedSvg).then((image) => {
           if (!map.hasImage(selectedImageName)) {
             map.addImage(selectedImageName, image, {
               pixelRatio: 2,
@@ -343,7 +361,7 @@ async function addCategoryIconImages(map) {
         <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none" />
       </svg>`;
 
-    const image = await svgToImage(colorizeSvg(fallbackSvg, "#0f172a"));
+    const image = await svgToImageData(colorizeSvg(fallbackSvg, "#0f172a"));
     map.addImage("category-event", image, {
       pixelRatio: 2,
     });
@@ -356,7 +374,7 @@ async function addCategoryIconImages(map) {
         <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none" />
       </svg>`;
 
-    const image = await svgToImage(colorizeSvg(fallbackSvg, "#ffffff"));
+    const image = await svgToImageData(colorizeSvg(fallbackSvg, "#ffffff"));
     map.addImage("category-event-selected", image, {
       pixelRatio: 2,
     });
