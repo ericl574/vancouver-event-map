@@ -25,6 +25,16 @@ function getEventStartDate(event) {
   return parsedDate;
 }
 
+function isUpcomingEvent(event) {
+  const eventStartDate = getEventStartDate(event);
+
+  if (!eventStartDate) {
+    return false;
+  }
+
+  return eventStartDate.getTime() >= Date.now();
+}
+
 function getEventDateString(event) {
   const eventDate =
     event.event_date ??
@@ -113,6 +123,8 @@ export function filterEvents(events, selectedCategory, query, filters = {}) {
 
     const matchesStatus = !event.status || event.status === "approved";
 
+    const matchesUpcoming = isUpcomingEvent(event);
+
     const matchesDate = matchesExactDate(event, filters.exactDate);
 
     const matchesTime = filters.exactDate
@@ -123,6 +135,7 @@ export function filterEvents(events, selectedCategory, query, filters = {}) {
       matchesCategory &&
       matchesQuery &&
       matchesStatus &&
+      matchesUpcoming &&
       matchesDate &&
       matchesTime
     );
