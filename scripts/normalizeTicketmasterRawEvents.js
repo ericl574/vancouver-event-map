@@ -15,6 +15,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SOURCE_NAME = "ticketmaster";
 const BATCH_LIMIT = 200;
+const AUTO_APPROVE_MAX_DAYS_AHEAD = 180;
+
+const GREATER_VANCOUVER_BOUNDS = {
+  minLat: 49.0,
+  maxLat: 49.5,
+  minLng: -123.35,
+  maxLng: -122.45,
+};
 
 function getPrimaryVenue(rawJson) {
   return rawJson?._embedded?.venues?.[0] || null;
@@ -36,6 +44,63 @@ function parseNumber(value) {
   const number = Number(value);
 
   return Number.isFinite(number) ? number : null;
+}
+
+function isInsideGreaterVancouver(lat, lng) {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= GREATER_VANCOUVER_BOUNDS.minLat &&
+    lat <= GREATER_VANCOUVER_BOUNDS.maxLat &&
+    lng >= GREATER_VANCOUVER_BOUNDS.minLng &&
+    lng <= GREATER_VANCOUVER_BOUNDS.maxLng
+  );
+}
+
+function getAutoApprovalIssue(event) {
+  if (!event.venue) {
+    return "Missing venue";
+  }
+
+  if (!event.ticket_url && !event.source_url) {
+    return "Missing ticket/source URL";
+  }
+
+  if (!isInsideGreaterVancouver(Number(event.lat), Number(event.lng))) {
+    return "Outside Greater Vancouver bounds";
+  }
+
+  const eventDate = new Date(`${event.event_date}T${event.start_time || "00:00:00"}`);
+
+  if (Number.isNaN(eventDate.getTime())) {
+    return "Invalid event date";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (eventDate < today) {
+    return "Event date is in the past";
+  }
+
+  const maxAutoApproveDate = new Date(today);
+  maxAutoApproveDate.setDate(today.getDate() + AUTO_APPROVE_MAX_DAYS_AHEAD);
+
+  if (eventDate > maxAutoApproveDate) {
+    return "Event is too far in the future";
+  }
+
+  const text = `${event.title || ""} ${event.description || ""}`.toLowerCase();
+
+  if (
+    text.includes("cancelled") ||
+    text.includes("canceled") ||
+    text.includes("postponed")
+  ) {
+    return "Possibly cancelled or postponed";
+  }
+
+  return null;
 }
 
 function getTicketmasterClassifications(rawJson) {
@@ -390,6 +455,7 @@ async function normalizeTicketmasterRawEvents() {
   console.log(`Found ${rawEvents.length} raw events to normalize.`);
 
   let normalizedCount = 0;
+  let linkedExistingCount = 0;
   let errorCount = 0;
 
   for (const rawEvent of rawEvents) {
@@ -404,28 +470,36 @@ async function normalizeTicketmasterRawEvents() {
         continue;
       }
 
+      const autoApprovalIssue = getAutoApprovalIssue(event);
+      event.status = autoApprovalIssue ? "pending" : "approved";
+
+      if (autoApprovalIssue) {
+        console.log(`Needs review: ${event.title} (${autoApprovalIssue})`);
+      }
+
       const existingEvent = await findExistingEvent(rawEvent, event);
 
-if (existingEvent) {
-  await markRawEventAsNormalized(rawEvent.id, existingEvent.id);
-  console.log(`Already normalized, linked existing event: ${event.title}`);
-  continue;
-}
+      if (existingEvent) {
+        linkedExistingCount += 1;
+        await markRawEventAsNormalized(rawEvent.id, existingEvent.id);
+        console.log(`Already normalized, linked existing event: ${event.title}`);
+        continue;
+      }
 
-const { data: insertedEvent, error: insertError } = await supabase
-  .from("events")
-  .insert(event)
-  .select("id")
-  .single();
+      const { data: insertedEvent, error: insertError } = await supabase
+        .from("events")
+        .insert(event)
+        .select("id")
+        .single();
 
-if (insertError) {
-  throw insertError;
-}
+      if (insertError) {
+        throw insertError;
+      }
 
-await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+      await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
 
-normalizedCount += 1;
-console.log(`Normalized: ${event.title}`);
+      normalizedCount += 1;
+      console.log(`Normalized ${event.status}: ${event.title}`);
     } catch (error) {
       errorCount += 1;
 
@@ -438,7 +512,8 @@ console.log(`Normalized: ${event.title}`);
   }
 
   console.log("Ticketmaster normalization complete.");
-  console.log(`Normalized: ${normalizedCount}`);
+  console.log(`Normalized new events: ${normalizedCount}`);
+  console.log(`Linked existing events: ${linkedExistingCount}`);
   console.log(`Errors: ${errorCount}`);
 }
 
