@@ -1,18 +1,21 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { CATEGORY_ICON_SVGS, getCategoryMapIconName } from "../assets/categoryIcons";
+import { CATEGORY_ICON_SVGS } from "../assets/categoryIcons";
 import { getCategoryById } from "../data/categories";
 
 const GREATER_VANCOUVER_CENTER = [-123.1162, 49.2463];
 
 const EVENT_SOURCE_ID = "event-points";
+
 const EVENT_CLUSTER_LAYER_ID = "event-clusters";
 const EVENT_CLUSTER_COUNT_LAYER_ID = "event-cluster-count";
+
 const EVENT_LOCATION_GROUP_LAYER_ID = "event-location-groups";
 const EVENT_LOCATION_GROUP_COUNT_LAYER_ID = "event-location-group-count";
-const EVENT_SINGLE_BG_LAYER_ID = "event-single-bg";
-const EVENT_SINGLE_ICON_LAYER_ID = "event-single-icon";
+
+const EVENT_SINGLE_DOT_LAYER_ID = "event-single-dots";
+const EVENT_SINGLE_ICON_LAYER_ID = "event-single-icons";
 
 function getLocationGroupKey(event) {
   const lat = Number(event.lat);
@@ -59,8 +62,13 @@ function groupEventsByExactLocation(events, selectedEvent) {
     );
 
     const firstVenue = sortedEvents[0]?.venue || "";
-    const allSameVenue = sortedEvents.every((event) => event.venue === firstVenue);
-    const selected = sortedEvents.some((event) => event.id === selectedEvent?.id);
+    const allSameVenue = sortedEvents.every(
+      (event) => event.venue === firstVenue
+    );
+
+    const selected = selectedEvent
+      ? sortedEvents.some((event) => String(event.id) === String(selectedEvent.id))
+      : false;
 
     return {
       ...group,
@@ -80,13 +88,14 @@ function createEventGeoJson(events, selectedEvent) {
     features: groups.map((group) => {
       const primaryEvent = group.primaryEvent;
       const category = getCategoryById(primaryEvent?.category);
+      const iconName = category.icon || "event";
       const eventIds = group.events.map((event) => String(event.id)).join("|");
 
       return {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [group.lng, group.lat],
+          coordinates: [Number(group.lng), Number(group.lat)],
         },
         properties: {
           key: group.key,
@@ -95,8 +104,9 @@ function createEventGeoJson(events, selectedEvent) {
           eventCount: group.events.length,
           selected: group.selected ? 1 : 0,
           category: category.id || primaryEvent?.category || "event",
-          categoryIcon: category.icon || "event",
-          iconImage: getCategoryMapIconName(category.icon || "event"),
+          categoryIcon: iconName,
+          iconImage: `category-${iconName}`,
+          selectedIconImage: `category-${iconName}-selected`,
           venue: group.venue || "This location",
         },
       };
@@ -265,33 +275,92 @@ function createDestinationLocationElement() {
   return wrapper;
 }
 
+function colorizeSvg(svg, color) {
+  let output = svg;
 
-function loadMapImageFromSvg(svg) {
+  output = output.replaceAll("currentColor", color);
+
+  if (!output.includes("xmlns=")) {
+    output = output.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+
+  if (!output.includes("width=")) {
+    output = output.replace("<svg", '<svg width="64"');
+  }
+
+  if (!output.includes("height=")) {
+    output = output.replace("<svg", '<svg height="64"');
+  }
+
+  return output;
+}
+
+function svgToImage(svg) {
   return new Promise((resolve, reject) => {
-    const image = new Image(64, 64);
+    const image = new Image();
 
     image.onload = () => resolve(image);
     image.onerror = reject;
+
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
 }
 
-async function addCategoryMapIcons(map) {
-  const entries = Object.entries(CATEGORY_ICON_SVGS);
+async function addCategoryIconImages(map) {
+  const iconEntries = Object.entries(CATEGORY_ICON_SVGS);
 
   await Promise.all(
-    entries.map(async ([iconKey, svg]) => {
-      const imageName = getCategoryMapIconName(iconKey);
+    iconEntries.flatMap(([iconName, svg]) => {
+      const normalImageName = `category-${iconName}`;
+      const selectedImageName = `category-${iconName}-selected`;
 
-      if (map.hasImage(imageName)) return;
+      const normalSvg = colorizeSvg(svg, "#0f172a");
+      const selectedSvg = colorizeSvg(svg, "#ffffff");
 
-      const image = await loadMapImageFromSvg(svg);
-
-      if (!map.hasImage(imageName)) {
-        map.addImage(imageName, image, { sdf: true });
-      }
+      return [
+        svgToImage(normalSvg).then((image) => {
+          if (!map.hasImage(normalImageName)) {
+            map.addImage(normalImageName, image, {
+              pixelRatio: 2,
+            });
+          }
+        }),
+        svgToImage(selectedSvg).then((image) => {
+          if (!map.hasImage(selectedImageName)) {
+            map.addImage(selectedImageName, image, {
+              pixelRatio: 2,
+            });
+          }
+        }),
+      ];
     })
   );
+
+  if (!map.hasImage("category-event")) {
+    const fallbackSvg =
+      CATEGORY_ICON_SVGS.event ||
+      `<svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none" />
+      </svg>`;
+
+    const image = await svgToImage(colorizeSvg(fallbackSvg, "#0f172a"));
+    map.addImage("category-event", image, {
+      pixelRatio: 2,
+    });
+  }
+
+  if (!map.hasImage("category-event-selected")) {
+    const fallbackSvg =
+      CATEGORY_ICON_SVGS.event ||
+      `<svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none" />
+      </svg>`;
+
+    const image = await svgToImage(colorizeSvg(fallbackSvg, "#ffffff"));
+    map.addImage("category-event-selected", image, {
+      pixelRatio: 2,
+    });
+  }
 }
 
 function addEventLayers(map) {
@@ -313,6 +382,135 @@ function addEventLayers(map) {
   });
 
   map.addLayer({
+    id: EVENT_SINGLE_DOT_LAYER_ID,
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      ["==", ["get", "eventCount"], 1],
+    ],
+    paint: {
+      "circle-color": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        "#ef4444",
+        "#dbeafe",
+      ],
+      "circle-radius": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        18,
+        16,
+      ],
+      "circle-stroke-color": "rgba(255, 255, 255, 0.98)",
+      "circle-stroke-width": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        3,
+        2.5,
+      ],
+      "circle-opacity": 0.98,
+    },
+  });
+
+  map.addLayer({
+    id: EVENT_SINGLE_ICON_LAYER_ID,
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      ["==", ["get", "eventCount"], 1],
+    ],
+    layout: {
+      "icon-image": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        ["get", "selectedIconImage"],
+        ["get", "iconImage"],
+      ],
+      "icon-size": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        1.28,
+        1.24,
+      ],
+      "icon-anchor": "center",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  });
+
+  map.addLayer({
+    id: EVENT_LOCATION_GROUP_LAYER_ID,
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      [">", ["get", "eventCount"], 1],
+    ],
+    paint: {
+      "circle-color": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        "#ef4444",
+        "#3b82f6",
+      ],
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["get", "eventCount"],
+        2,
+        15,
+        5,
+        19,
+        10,
+        24,
+        20,
+        29,
+      ],
+      "circle-stroke-color": "rgba(255, 255, 255, 0.98)",
+      "circle-stroke-width": 2.75,
+      "circle-opacity": 0.98,
+    },
+  });
+
+  map.addLayer({
+    id: EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      [">", ["get", "eventCount"], 1],
+    ],
+    layout: {
+      "text-field": ["to-string", ["get", "eventCount"]],
+      "text-size": [
+        "interpolate",
+        ["linear"],
+        ["get", "eventCount"],
+        2,
+        12,
+        10,
+        14,
+        20,
+        15,
+      ],
+      "text-font": ["Noto Sans Bold"],
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+    },
+    paint: {
+      "text-color": "#ffffff",
+      "text-halo-color": "rgba(15, 23, 42, 0.18)",
+      "text-halo-width": 0.4,
+    },
+  });
+
+  map.addLayer({
     id: EVENT_CLUSTER_LAYER_ID,
     type: "circle",
     source: EVENT_SOURCE_ID,
@@ -322,26 +520,26 @@ function addEventLayers(map) {
         "case",
         [">", ["coalesce", ["get", "selected_count"], 0], 0],
         "#ef4444",
-        "#2563eb",
+        "#3b82f6",
       ],
       "circle-radius": [
         "interpolate",
         ["linear"],
         ["coalesce", ["get", "event_count"], ["get", "point_count"]],
         2,
-        18,
+        16,
         5,
-        23,
-        10,
-        30,
         20,
-        39,
+        10,
+        25,
+        20,
+        31,
         40,
-        52,
+        38,
       ],
-      "circle-stroke-color": "#111827",
-      "circle-stroke-width": 3,
-      "circle-opacity": 0.96,
+      "circle-stroke-color": "rgba(255, 255, 255, 0.98)",
+      "circle-stroke-width": 2.75,
+      "circle-opacity": 0.98,
     },
   });
 
@@ -364,108 +562,16 @@ function addEventLayers(map) {
         10,
         14,
         20,
-        16,
+        15,
       ],
       "text-font": ["Noto Sans Bold"],
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
     },
     paint: {
       "text-color": "#ffffff",
-    },
-  });
-
-  map.addLayer({
-    id: EVENT_LOCATION_GROUP_LAYER_ID,
-    type: "circle",
-    source: EVENT_SOURCE_ID,
-    filter: ["all", ["!", ["has", "point_count"]], [">", ["get", "eventCount"], 1]],
-    paint: {
-      "circle-color": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        "#ef4444",
-        "#2563eb",
-      ],
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["get", "eventCount"],
-        2,
-        18,
-        5,
-        23,
-        10,
-        30,
-        20,
-        39,
-      ],
-      "circle-stroke-color": "#111827",
-      "circle-stroke-width": 3,
-      "circle-opacity": 0.97,
-    },
-  });
-
-  map.addLayer({
-    id: EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
-    type: "symbol",
-    source: EVENT_SOURCE_ID,
-    filter: ["all", ["!", ["has", "point_count"]], [">", ["get", "eventCount"], 1]],
-    layout: {
-      "text-field": ["to-string", ["get", "eventCount"]],
-      "text-size": [
-        "interpolate",
-        ["linear"],
-        ["get", "eventCount"],
-        2,
-        12,
-        10,
-        14,
-        20,
-        16,
-      ],
-      "text-font": ["Noto Sans Bold"],
-    },
-    paint: {
-      "text-color": "#ffffff",
-    },
-  });
-
-  map.addLayer({
-    id: EVENT_SINGLE_BG_LAYER_ID,
-    type: "circle",
-    source: EVENT_SOURCE_ID,
-    filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "eventCount"], 1]],
-    paint: {
-      "circle-color": "rgba(255, 255, 255, 0.97)",
-      "circle-radius": ["case", ["==", ["get", "selected"], 1], 16, 14],
-      "circle-stroke-color": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        "#ef4444",
-        "#111827",
-      ],
-      "circle-stroke-width": ["case", ["==", ["get", "selected"], 1], 4, 2],
-      "circle-opacity": 0.98,
-    },
-  });
-
-  map.addLayer({
-    id: EVENT_SINGLE_ICON_LAYER_ID,
-    type: "symbol",
-    source: EVENT_SOURCE_ID,
-    filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "eventCount"], 1]],
-    layout: {
-      "icon-image": ["get", "iconImage"],
-      "icon-size": ["case", ["==", ["get", "selected"], 1], 0.42, 0.38],
-      "icon-allow-overlap": true,
-      "icon-ignore-placement": true,
-    },
-    paint: {
-      "icon-color": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        "#ef4444",
-        "#334155",
-      ],
+      "text-halo-color": "rgba(15, 23, 42, 0.18)",
+      "text-halo-width": 0.4,
     },
   });
 }
@@ -478,6 +584,8 @@ export default function EventMap({
   userLocation,
   destinationLocation,
 }) {
+  const [isMapReady, setIsMapReady] = useState(false);
+
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
@@ -559,7 +667,11 @@ export default function EventMap({
           onSelectLocationGroupRef.current(group);
         }
 
-        const expansionZoom = await getClusterExpansionZoomAsync(source, clusterId);
+        const expansionZoom = await getClusterExpansionZoomAsync(
+          source,
+          clusterId
+        );
+
         const currentZoom = map.getZoom();
         const targetZoom = Math.min(expansionZoom, currentZoom + 1.7, 15);
 
@@ -573,7 +685,7 @@ export default function EventMap({
       }
     };
 
-    const handlePointClick = (event) => {
+    const handleGroupClick = (event) => {
       const feature = event.features?.[0];
 
       if (!feature) return;
@@ -590,7 +702,7 @@ export default function EventMap({
         const targetZoom = Math.max(currentZoom, Math.min(currentZoom + 1.4, 14));
 
         map.easeTo({
-          center: [group.lng, group.lat],
+          center: [Number(group.lng), Number(group.lat)],
           zoom: targetZoom,
           duration: 550,
         });
@@ -601,11 +713,23 @@ export default function EventMap({
       onSelectEventRef.current?.(group.primaryEvent);
     };
 
+    const handleSingleClick = (event) => {
+      const feature = event.features?.[0];
+
+      if (!feature) return;
+
+      const group = buildLocationGroupFromFeature(feature, eventsRef.current);
+
+      if (!group?.primaryEvent) return;
+
+      onSelectEventRef.current?.(group.primaryEvent);
+    };
+
     const bindEventLayerHandlers = async () => {
       try {
-        await addCategoryMapIcons(map);
+        await addCategoryIconImages(map);
       } catch (error) {
-        console.error("Could not load category map icons:", error);
+        console.error("Could not load category icons:", error);
       }
 
       addEventLayers(map);
@@ -619,31 +743,55 @@ export default function EventMap({
       map.on("click", EVENT_CLUSTER_LAYER_ID, handleClusterClick);
       map.on("click", EVENT_CLUSTER_COUNT_LAYER_ID, handleClusterClick);
 
-      map.on("click", EVENT_LOCATION_GROUP_LAYER_ID, handlePointClick);
-      map.on("click", EVENT_LOCATION_GROUP_COUNT_LAYER_ID, handlePointClick);
-      map.on("click", EVENT_SINGLE_BG_LAYER_ID, handlePointClick);
-      map.on("click", EVENT_SINGLE_ICON_LAYER_ID, handlePointClick);
+      map.on("click", EVENT_LOCATION_GROUP_LAYER_ID, handleGroupClick);
+      map.on("click", EVENT_LOCATION_GROUP_COUNT_LAYER_ID, handleGroupClick);
+
+      map.on("click", EVENT_SINGLE_DOT_LAYER_ID, handleSingleClick);
+      map.on("click", EVENT_SINGLE_ICON_LAYER_ID, handleSingleClick);
 
       [
         EVENT_CLUSTER_LAYER_ID,
         EVENT_CLUSTER_COUNT_LAYER_ID,
         EVENT_LOCATION_GROUP_LAYER_ID,
         EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
-        EVENT_SINGLE_BG_LAYER_ID,
+        EVENT_SINGLE_DOT_LAYER_ID,
         EVENT_SINGLE_ICON_LAYER_ID,
       ].forEach((layerId) => {
         map.on("mouseenter", layerId, setPointerCursor);
         map.on("mouseleave", layerId, clearPointerCursor);
       });
+
+      setIsMapReady(true);
     };
 
     map.on("load", bindEventLayerHandlers);
 
     return () => {
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+
+      if (destinationMarkerRef.current) {
+        destinationMarkerRef.current.remove();
+        destinationMarkerRef.current = null;
+      }
+
       map.remove();
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapReady) return;
+
+    const source = map.getSource(EVENT_SOURCE_ID);
+
+    if (source?.setData) {
+      source.setData(eventGeoJson);
+    }
+  }, [eventGeoJson, isMapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -654,8 +802,13 @@ export default function EventMap({
       return;
     }
 
+    const lng = Number(selectedEvent.lng);
+    const lat = Number(selectedEvent.lat);
+
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+
     map.flyTo({
-      center: [selectedEvent.lng, selectedEvent.lat],
+      center: [lng, lat],
       zoom: 15,
       speed: 1.4,
       curve: 1.2,
@@ -674,6 +827,11 @@ export default function EventMap({
 
     if (!userLocation?.lat || !userLocation?.lng) return;
 
+    const lng = Number(userLocation.lng);
+    const lat = Number(userLocation.lat);
+
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+
     const popup = new maplibregl.Popup({
       offset: 18,
       closeButton: false,
@@ -683,12 +841,12 @@ export default function EventMap({
       element: createUserLocationElement(),
       anchor: "center",
     })
-      .setLngLat([userLocation.lng, userLocation.lat])
+      .setLngLat([lng, lat])
       .setPopup(popup)
       .addTo(map);
 
     map.flyTo({
-      center: [userLocation.lng, userLocation.lat],
+      center: [lng, lat],
       zoom: 14,
       speed: 1.4,
       curve: 1.2,
@@ -706,6 +864,11 @@ export default function EventMap({
     }
 
     if (!destinationLocation?.lat || !destinationLocation?.lng) return;
+
+    const lng = Number(destinationLocation.lng);
+    const lat = Number(destinationLocation.lat);
+
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
 
     const popup = new maplibregl.Popup({
       offset: 18,
@@ -725,12 +888,12 @@ export default function EventMap({
       element: createDestinationLocationElement(),
       anchor: "bottom",
     })
-      .setLngLat([destinationLocation.lng, destinationLocation.lat])
+      .setLngLat([lng, lat])
       .setPopup(popup)
       .addTo(map);
 
     map.flyTo({
-      center: [destinationLocation.lng, destinationLocation.lat],
+      center: [lng, lat],
       zoom: 15,
       speed: 1.6,
       curve: 1.15,
@@ -745,7 +908,7 @@ export default function EventMap({
     >
       <div ref={mapContainerRef} className="h-full w-full" />
 
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-rose-50/35 via-transparent to-white/10" />
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-rose-50/25 via-transparent to-white/10" />
     </section>
   );
 }
