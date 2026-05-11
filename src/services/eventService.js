@@ -3,8 +3,10 @@ import { supabase } from "../lib/supabaseClient";
 function formatTime(timeValue) {
   if (!timeValue) return "";
 
-  const [hourString, minuteString = "00"] = timeValue.split(":");
+  const [hourString, minuteString = "00"] = String(timeValue).split(":");
   const hour = Number(hourString);
+
+  if (Number.isNaN(hour)) return "";
 
   const suffix = hour >= 12 ? "PM" : "AM";
   const displayHour = hour % 12 || 12;
@@ -53,18 +55,35 @@ function mapDatabaseEventToFrontendEvent(event, index) {
       address: event.address || "",
       area: event.area || "",
       city: event.city || "Vancouver",
+
       lat: event.lat,
       lng: event.lng,
+
+      // Display fields for UI cards
       date: formatDate(event.event_date),
       startTime: formatTime(event.start_time),
       endTime: formatTime(event.end_time),
+
+      // Raw fields for filtering and logic
+      event_date: event.event_date,
+      start_time: event.start_time,
+      end_time: event.end_time,
+
+      // Optional camelCase aliases, useful if other components prefer them
+      eventDate: event.event_date,
+      rawStartTime: event.start_time,
+      rawEndTime: event.end_time,
+
       price: event.price || "",
       isFree: Boolean(event.is_free),
+      is_free: Boolean(event.is_free),
+
       description: event.description || "",
       imageUrl: event.image_url || "",
       ticketUrl: event.ticket_url || "",
       sourceUrl: event.source_url || "",
       organizerName: event.organizer_name || "",
+
       tags: event.tags || [],
       status: event.status,
       createdAt: event.created_at,
@@ -73,32 +92,68 @@ function mapDatabaseEventToFrontendEvent(event, index) {
     index
   );
 }
+function normalizeDedupeValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
 
+function getEventDedupeKey(event) {
+  if (event.source_url) {
+    return `source:${normalizeDedupeValue(event.source_url)}`;
+  }
+
+  return [
+    "fallback",
+    normalizeDedupeValue(event.title),
+    normalizeDedupeValue(event.event_date),
+    normalizeDedupeValue(event.start_time),
+    normalizeDedupeValue(event.venue),
+  ].join("|");
+}
+
+function dedupeDatabaseEvents(events) {
+  const seenKeys = new Set();
+
+  return events.filter((event) => {
+    const key = getEventDedupeKey(event);
+
+    if (seenKeys.has(key)) {
+      return false;
+    }
+
+    seenKeys.add(key);
+    return true;
+  });
+}
 export async function getApprovedEvents() {
   const { data, error } = await supabase
     .from("events")
     .select("*")
     .eq("status", "approved")
-    .order("event_date", { ascending: true });
+    .order("event_date", { ascending: true })
+    .order("created_at", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data.map(mapDatabaseEventToFrontendEvent);
+  const dedupedEvents = dedupeDatabaseEvents(data || []);
+
+  return dedupedEvents.map(mapDatabaseEventToFrontendEvent);
 }
+
 export async function getPendingEvents() {
   const { data, error } = await supabase
     .from("events")
     .select("*")
     .eq("status", "pending")
-    .order("event_date", { ascending: true });
+    .order("event_date", { ascending: true })
+    .order("start_time", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data.map(mapDatabaseEventToFrontendEvent);
+  return (data ?? []).map(mapDatabaseEventToFrontendEvent);
 }
 
 export async function updateEventStatus(eventId, status) {

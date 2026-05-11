@@ -1,6 +1,11 @@
 import { useState } from "react";
+import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
-import { IconBookmark, IconCalendarPlus, IconShare } from "./Icons";
+import {
+  IconBookmark,
+  IconCalendarPlus,
+  IconShare,
+} from "./Icons";
 
 export default function EventPreviewCard({ event }) {
   const [shareMessage, setShareMessage] = useState("");
@@ -47,61 +52,58 @@ ${event.price}`;
   }
 
   function handleAddToCalendar() {
-  const start = buildCalendarDate(event.date, event.startTime);
-  const end = buildCalendarDate(event.date, event.endTime);
+    const start = buildCalendarDate(event.date, event.startTime);
+    const end = buildCalendarDate(event.date, event.endTime);
 
-  // If there is no valid end time, default to 2 hours after start
-  const finalEnd =
-    end && end > start
-      ? end
-      : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    const finalEnd =
+      end && end > start
+        ? end
+        : new Date(start.getTime() + 2 * 60 * 60 * 1000);
 
-  const calendarUrl = new URL("https://calendar.google.com/calendar/render");
+    const calendarUrl = new URL("https://calendar.google.com/calendar/render");
 
-  calendarUrl.searchParams.set("action", "TEMPLATE");
-  calendarUrl.searchParams.set("text", event.title);
-  calendarUrl.searchParams.set(
-    "dates",
-    `${formatGoogleCalendarDate(start)}/${formatGoogleCalendarDate(finalEnd)}`
-  );
-  calendarUrl.searchParams.set(
-    "details",
-    event.description || "Event from Vancouver Event Map"
-  );
-  calendarUrl.searchParams.set("location", `${event.venue}, ${event.area}`);
+    calendarUrl.searchParams.set("action", "TEMPLATE");
+    calendarUrl.searchParams.set("text", event.title);
+    calendarUrl.searchParams.set(
+      "dates",
+      `${formatGoogleCalendarDate(start)}/${formatGoogleCalendarDate(finalEnd)}`
+    );
+    calendarUrl.searchParams.set(
+      "details",
+      event.description || "Event from Vancouver Event Map"
+    );
+    calendarUrl.searchParams.set("location", `${event.venue}, ${event.area}`);
 
-  window.open(calendarUrl.toString(), "_blank", "noopener,noreferrer");
-}
+    window.open(calendarUrl.toString(), "_blank", "noopener,noreferrer");
+  }
 
-function buildCalendarDate(dateText, timeText) {
-  if (!dateText || !timeText) {
+  function buildCalendarDate(dateText, timeText) {
+    if (!dateText || !timeText) {
+      const fallback = new Date();
+      fallback.setHours(19, 0, 0, 0);
+      return fallback;
+    }
+
+    const parsed = new Date(`${dateText}T${timeText}`);
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+
+    const fallbackParsed = new Date(`${dateText} ${timeText}`);
+
+    if (!Number.isNaN(fallbackParsed.getTime())) {
+      return fallbackParsed;
+    }
+
     const fallback = new Date();
     fallback.setHours(19, 0, 0, 0);
     return fallback;
   }
 
-  // Works best with date: "2026-05-10", startTime: "19:30"
-  const parsed = new Date(`${dateText}T${timeText}`);
-
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed;
+  function formatGoogleCalendarDate(date) {
+    return date.toISOString().replace(/[-:]|\.\d{3}/g, "");
   }
-
-  // Backup for formats like "May 10, 2026" + "7:30 PM"
-  const fallbackParsed = new Date(`${dateText} ${timeText}`);
-
-  if (!Number.isNaN(fallbackParsed.getTime())) {
-    return fallbackParsed;
-  }
-
-  const fallback = new Date();
-  fallback.setHours(19, 0, 0, 0);
-  return fallback;
-}
-
-function formatGoogleCalendarDate(date) {
-  return date.toISOString().replace(/[-:]|\.\d{3}/g, "");
-}
 
   return (
     <section className="absolute inset-x-0 bottom-0 z-40 rounded-t-3xl bg-white p-4 shadow-2xl lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl">
@@ -110,7 +112,10 @@ function formatGoogleCalendarDate(date) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-base leading-none">{category.icon}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+              <CategoryIcon icon={category.icon} className="h-4 w-4" />
+            </span>
+
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {category.label}
             </span>
@@ -132,7 +137,9 @@ function formatGoogleCalendarDate(date) {
         </button>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600">{event.description}</p>
+      <p className="mt-3 line-clamp-3 text-sm text-slate-600">
+        {event.description}
+      </p>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
         <div className="rounded-2xl bg-slate-100 p-3">
@@ -166,13 +173,13 @@ function formatGoogleCalendarDate(date) {
         </button>
 
         <button
-  type="button"
-  onClick={handleAddToCalendar}
-  className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-  aria-label="Add to calendar"
->
-  <IconCalendarPlus className="h-5 w-5" />
-</button>
+          type="button"
+          onClick={handleAddToCalendar}
+          className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+          aria-label="Add to calendar"
+        >
+          <IconCalendarPlus className="h-5 w-5" />
+        </button>
 
         <button
           type="button"

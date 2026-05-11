@@ -1,3 +1,4 @@
+import CategoryIcon from "./CategoryIcon";
 import { categories } from "../data/categories";
 
 export default function CategoryChips({ selectedCategory, onSelectCategory }) {
@@ -19,26 +20,38 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
           selectedCategory === "all" ? selectedClass : unselectedClass
         }`}
       >
-        <span>✨</span>
+        <CategoryIcon
+          icon="all"
+          className={`h-4 w-4 ${
+            selectedCategory === "all" ? "text-rose-700" : "text-slate-500"
+          }`}
+        />
         <span>All</span>
       </button>
 
-      {categories.map((category) => (
-        <button
-          key={category.id}
-          type="button"
-          onClick={() => onSelectCategory(category.id)}
-          aria-pressed={selectedCategory === category.id}
-          className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition ${
-            selectedCategory === category.id ? selectedClass : unselectedClass
-          }`}
-        >
-          <span className="text-base leading-none">
-            {category.icon}
-          </span>
-          <span>{category.label}</span>
-        </button>
-      ))}
+      {categories.map((category) => {
+        const isSelected = selectedCategory === category.id;
+
+        return (
+          <button
+            key={category.id}
+            type="button"
+            onClick={() => onSelectCategory(category.id)}
+            aria-pressed={isSelected}
+            className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition ${
+              isSelected ? selectedClass : unselectedClass
+            }`}
+          >
+            <CategoryIcon
+              icon={category.icon}
+              className={`h-4 w-4 ${
+                isSelected ? "text-rose-700" : "text-slate-500"
+              }`}
+            />
+            <span>{category.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }
