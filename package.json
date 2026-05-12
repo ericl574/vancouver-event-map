@@ -11,7 +11,9 @@
     "import:ticketmaster": "node --env-file=.env.local scripts/importTicketmasterEvents.js",
     "normalize:ticketmaster": "node --env-file=.env.local scripts/normalizeTicketmasterRawEvents.js",
     "cleanup:events": "node --env-file=.env.local scripts/cleanupExpiredEvents.js",
-    "cleanup:events:dry": "node --env-file=.env.local scripts/cleanupExpiredEvents.js --dry-run"
+    "cleanup:events:dry": "node --env-file=.env.local scripts/cleanupExpiredEvents.js --dry-run",
+    "import:ubc": "node --env-file=.env.local scripts/importUbcEvents.js",
+    "import:ubc:dry": "node --env-file=.env.local scripts/importUbcEvents.js --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
