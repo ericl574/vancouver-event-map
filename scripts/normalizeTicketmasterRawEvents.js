@@ -389,6 +389,37 @@ async function updateExistingEvent(eventId, event) {
   }
 }
 
+
+async function upsertEventSource(rawEvent, event, eventId) {
+  const now = new Date().toISOString();
+
+  const sourceRow = {
+    event_id: eventId,
+    source_name: rawEvent.source_name || SOURCE_NAME,
+    external_id: rawEvent.external_id || null,
+    source_url: event.source_url,
+    ticket_url: event.ticket_url || event.source_url,
+    source_title: rawEvent.raw_title || event.title,
+    source_venue: rawEvent.raw_location_text || event.venue,
+    source_date: event.event_date,
+    source_time: event.start_time,
+    source_price_text: rawEvent.raw_price_text || event.price,
+    raw_event_id: rawEvent.id,
+    last_seen_at: now,
+    updated_at: now,
+  };
+
+  const { error } = await supabase
+    .from("event_sources")
+    .upsert(sourceRow, {
+      onConflict: "source_name,source_url",
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function findExistingEvent(rawEvent, event) {
   if (rawEvent.normalized_event_id) {
     const { data, error } = await supabase
@@ -496,6 +527,7 @@ async function normalizeTicketmasterRawEvents() {
       if (existingEvent) {
         linkedExistingCount += 1;
         await updateExistingEvent(existingEvent.id, event);
+        await upsertEventSource(rawEvent, event, existingEvent.id);
         await markRawEventAsNormalized(rawEvent.id, existingEvent.id);
         console.log(`Updated existing ${event.status} event: ${event.title}`);
         continue;
@@ -511,7 +543,8 @@ async function normalizeTicketmasterRawEvents() {
         throw insertError;
       }
 
-      await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+        await upsertEventSource(rawEvent, event, insertedEvent.id);
+        await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
 
       normalizedCount += 1;
       console.log(`Normalized ${event.status}: ${event.title}`);
