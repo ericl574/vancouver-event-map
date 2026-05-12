@@ -1,4 +1,7 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config();
 import { createClient } from "@supabase/supabase-js";
 
 const {
@@ -196,15 +199,13 @@ async function importTicketmasterEvents() {
     const rows = dedupeRowsBySourceUrl(
       events
         .map(mapTicketmasterEventToRawEvent)
-        .filter((row) => row.source_url)
+        .filter((row) => row.source_url && row.external_id)
     );
-
-    const { error } = await supabase
-  .from("raw_events")
-  .upsert(rows, {
-    onConflict: "source_name,source_url",
-    ignoreDuplicates: true,
-  });
+      const { error } = await supabase
+        .from("raw_events")
+        .upsert(rows, {
+          onConflict: "source_name,external_id",
+        });
 
     if (error) {
       throw error;
@@ -213,7 +214,7 @@ async function importTicketmasterEvents() {
     totalSaved += rows.length;
 
     console.log(
-      `Page ${page + 1}/${totalPages}: fetched ${events.length}, saved/upserted ${rows.length}`
+      `Page ${page + 1}/${totalPages}: fetched ${events.length}, queued/refreshed ${rows.length}`
     );
 
     if (page + 1 >= totalPages) {
@@ -223,7 +224,7 @@ async function importTicketmasterEvents() {
 
   console.log("Ticketmaster import complete.");
   console.log(`Fetched: ${totalFetched}`);
-  console.log(`Saved/upserted into raw_events: ${totalSaved}`);
+  console.log(`Queued/refreshed in raw_events: ${totalSaved}`);
 }
 
 importTicketmasterEvents().catch((error) => {

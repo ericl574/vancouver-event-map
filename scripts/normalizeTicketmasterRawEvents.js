@@ -1,4 +1,7 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config();
 import { createClient } from "@supabase/supabase-js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
@@ -375,6 +378,17 @@ async function markRawEventAsNormalized(rawEventId, eventId) {
     );
   }
 }
+async function updateExistingEvent(eventId, event) {
+  const { error } = await supabase
+    .from("events")
+    .update(event)
+    .eq("id", eventId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function findExistingEvent(rawEvent, event) {
   if (rawEvent.normalized_event_id) {
     const { data, error } = await supabase
@@ -481,8 +495,9 @@ async function normalizeTicketmasterRawEvents() {
 
       if (existingEvent) {
         linkedExistingCount += 1;
+        await updateExistingEvent(existingEvent.id, event);
         await markRawEventAsNormalized(rawEvent.id, existingEvent.id);
-        console.log(`Already normalized, linked existing event: ${event.title}`);
+        console.log(`Updated existing ${event.status} event: ${event.title}`);
         continue;
       }
 
@@ -513,7 +528,7 @@ async function normalizeTicketmasterRawEvents() {
 
   console.log("Ticketmaster normalization complete.");
   console.log(`Normalized new events: ${normalizedCount}`);
-  console.log(`Linked existing events: ${linkedExistingCount}`);
+  console.log(`Updated existing events: ${linkedExistingCount}`);
   console.log(`Errors: ${errorCount}`);
 }
 
