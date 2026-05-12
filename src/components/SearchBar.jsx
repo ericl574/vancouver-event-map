@@ -79,6 +79,7 @@ export default function SearchBar({
         className="rounded-xl bg-slate-100 p-3 transition hover:bg-slate-200"
         aria-label="Toggle time filters"
         title="Toggle time filters"
+        data-filter-toggle="true"
       >
         <IconSliders className="h-5 w-5 text-slate-700" />
       </button>
