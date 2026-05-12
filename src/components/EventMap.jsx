@@ -17,6 +17,14 @@ const EVENT_LOCATION_GROUP_COUNT_LAYER_ID = "event-location-group-count";
 const EVENT_SINGLE_DOT_LAYER_ID = "event-single-dots";
 const EVENT_SINGLE_ICON_LAYER_ID = "event-single-icons";
 
+const EVENT_SELECTED_SINGLE_DOT_LAYER_ID = "event-selected-single-dot";
+const EVENT_SELECTED_SINGLE_ICON_LAYER_ID = "event-selected-single-icon";
+const EVENT_SELECTED_LOCATION_GROUP_LAYER_ID = "event-selected-location-group";
+const EVENT_SELECTED_LOCATION_GROUP_COUNT_LAYER_ID =
+  "event-selected-location-group-count";
+const EVENT_SELECTED_CLUSTER_LAYER_ID = "event-selected-cluster";
+const EVENT_SELECTED_CLUSTER_COUNT_LAYER_ID = "event-selected-cluster-count";
+
 const MAP_CATEGORY_ICON_SIZE = 24;
 
 function normalizeLocationText(value) {
@@ -413,8 +421,98 @@ async function addCategoryIconImages(map) {
   }
 }
 
+const MAX_BADGE_IMAGE_COUNT = 500;
+const BADGE_IMAGE_PIXEL_RATIO = 2;
+
+function clampBadgeCount(count) {
+  const numericCount = Number(count);
+
+  if (!Number.isFinite(numericCount)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(MAX_BADGE_IMAGE_COUNT, Math.round(numericCount)));
+}
+
+function getCountBadgeImageName(count, isSelected = false) {
+  const prefix = isSelected ? "event-badge-selected" : "event-badge";
+  return `${prefix}-${clampBadgeCount(count)}`;
+}
+
+function getBadgeRadius(count, isSelected = false) {
+  const numericCount = clampBadgeCount(count);
+
+  if (isSelected) {
+    if (numericCount >= 40) return 40;
+    if (numericCount >= 20) return 33;
+    if (numericCount >= 10) return 27;
+    if (numericCount >= 5) return 22;
+    return 18;
+  }
+
+  if (numericCount >= 40) return 38;
+  if (numericCount >= 20) return 31;
+  if (numericCount >= 10) return 25;
+  if (numericCount >= 5) return 20;
+  return 16;
+}
+
+function createCountBadgeImage(count, isSelected = false) {
+  const radius = getBadgeRadius(count, isSelected);
+  const strokeWidth = isSelected ? 3.5 : 1.25;
+  const padding = 5;
+  const displaySize = Math.ceil((radius + strokeWidth + padding) * 2);
+  const canvas = document.createElement("canvas");
+
+  canvas.width = displaySize * BADGE_IMAGE_PIXEL_RATIO;
+  canvas.height = displaySize * BADGE_IMAGE_PIXEL_RATIO;
+
+  const context = canvas.getContext("2d");
+  context.scale(BADGE_IMAGE_PIXEL_RATIO, BADGE_IMAGE_PIXEL_RATIO);
+
+  const center = displaySize / 2;
+
+  context.beginPath();
+  context.arc(center, center, radius, 0, Math.PI * 2);
+  context.fillStyle = isSelected ? "#ec4899" : "#fdf2f8";
+  context.fill();
+
+  context.lineWidth = strokeWidth;
+  context.strokeStyle = isSelected ? "rgba(255, 255, 255, 0.98)" : "#f9a8d4";
+  context.stroke();
+
+  context.font = `700 ${radius >= 30 ? 16 : radius >= 24 ? 15 : 14}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.fillStyle = isSelected ? "#ffffff" : "#be185d";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(String(clampBadgeCount(count)), center, center + 0.5);
+
+  return context.getImageData(0, 0, canvas.width, canvas.height);
+}
+
+function addCountBadgeImages(map) {
+  for (let count = 1; count <= MAX_BADGE_IMAGE_COUNT; count += 1) {
+    const normalName = getCountBadgeImageName(count, false);
+    const selectedName = getCountBadgeImageName(count, true);
+
+    if (!map.hasImage(normalName)) {
+      map.addImage(normalName, createCountBadgeImage(count, false), {
+        pixelRatio: BADGE_IMAGE_PIXEL_RATIO,
+      });
+    }
+
+    if (!map.hasImage(selectedName)) {
+      map.addImage(selectedName, createCountBadgeImage(count, true), {
+        pixelRatio: BADGE_IMAGE_PIXEL_RATIO,
+      });
+    }
+  }
+}
+
 function addEventLayers(map) {
   if (map.getSource(EVENT_SOURCE_ID)) return;
+
+  addCountBadgeImages(map);
 
   map.addSource(EVENT_SOURCE_ID, {
     type: "geojson",
@@ -494,41 +592,6 @@ function addEventLayers(map) {
 
   map.addLayer({
     id: EVENT_LOCATION_GROUP_LAYER_ID,
-    type: "circle",
-    source: EVENT_SOURCE_ID,
-    filter: [
-      "all",
-      ["!", ["has", "point_count"]],
-      [">", ["get", "eventCount"], 1],
-    ],
-    paint: {
-      "circle-color": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        "#ef4444",
-        "#3b82f6",
-      ],
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["get", "eventCount"],
-        2,
-        15,
-        5,
-        19,
-        10,
-        24,
-        20,
-        29,
-      ],
-      "circle-stroke-color": "rgba(255, 255, 255, 0.98)",
-      "circle-stroke-width": 2.75,
-      "circle-opacity": 0.98,
-    },
-  });
-
-  map.addLayer({
-    id: EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
     type: "symbol",
     source: EVENT_SOURCE_ID,
     filter: [
@@ -537,41 +600,86 @@ function addEventLayers(map) {
       [">", ["get", "eventCount"], 1],
     ],
     layout: {
-      "text-field": ["to-string", ["get", "eventCount"]],
-      "text-size": [
+      "icon-image": [
+        "case",
+        ["==", ["get", "selected"], 1],
+        ["concat", "event-badge-selected-", ["to-string", ["get", "eventCount"]]],
+        ["concat", "event-badge-", ["to-string", ["get", "eventCount"]]],
+      ],
+      "icon-size": 1,
+      "icon-anchor": "center",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  });
+
+  // Invisible hit area kept for existing click/hover handlers.
+  map.addLayer({
+    id: EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      [">", ["get", "eventCount"], 1],
+    ],
+    paint: {
+      "circle-radius": [
         "interpolate",
         ["linear"],
         ["get", "eventCount"],
         2,
-        12,
-        10,
-        14,
+        16,
+        5,
         20,
-        15,
+        10,
+        25,
+        20,
+        31,
+        40,
+        38,
       ],
-      "text-font": ["Noto Sans Bold"],
-      "text-allow-overlap": true,
-      "text-ignore-placement": true,
-    },
-    paint: {
-      "text-color": "#ffffff",
-      "text-halo-color": "rgba(15, 23, 42, 0.18)",
-      "text-halo-width": 0.4,
+      "circle-color": "rgba(0, 0, 0, 0)",
+      "circle-stroke-color": "rgba(0, 0, 0, 0)",
+      "circle-opacity": 0,
+      "circle-stroke-opacity": 0,
     },
   });
 
   map.addLayer({
     id: EVENT_CLUSTER_LAYER_ID,
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: ["has", "point_count"],
+    layout: {
+      "icon-image": [
+        "case",
+        [">", ["coalesce", ["get", "selected_count"], 0], 0],
+        [
+          "concat",
+          "event-badge-selected-",
+          ["to-string", ["coalesce", ["get", "event_count"], ["get", "point_count"]]],
+        ],
+        [
+          "concat",
+          "event-badge-",
+          ["to-string", ["coalesce", ["get", "event_count"], ["get", "point_count"]]],
+        ],
+      ],
+      "icon-size": 1,
+      "icon-anchor": "center",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  });
+
+  // Invisible hit area kept for existing click/hover handlers.
+  map.addLayer({
+    id: EVENT_CLUSTER_COUNT_LAYER_ID,
     type: "circle",
     source: EVENT_SOURCE_ID,
     filter: ["has", "point_count"],
     paint: {
-      "circle-color": [
-        "case",
-        [">", ["coalesce", ["get", "selected_count"], 0], 0],
-        "#ef4444",
-        "#3b82f6",
-      ],
       "circle-radius": [
         "interpolate",
         ["linear"],
@@ -587,41 +695,10 @@ function addEventLayers(map) {
         40,
         38,
       ],
-      "circle-stroke-color": "rgba(255, 255, 255, 0.98)",
-      "circle-stroke-width": 2.75,
-      "circle-opacity": 0.98,
-    },
-  });
-
-  map.addLayer({
-    id: EVENT_CLUSTER_COUNT_LAYER_ID,
-    type: "symbol",
-    source: EVENT_SOURCE_ID,
-    filter: ["has", "point_count"],
-    layout: {
-      "text-field": [
-        "to-string",
-        ["coalesce", ["get", "event_count"], ["get", "point_count"]],
-      ],
-      "text-size": [
-        "interpolate",
-        ["linear"],
-        ["coalesce", ["get", "event_count"], ["get", "point_count"]],
-        2,
-        12,
-        10,
-        14,
-        20,
-        15,
-      ],
-      "text-font": ["Noto Sans Bold"],
-      "text-allow-overlap": true,
-      "text-ignore-placement": true,
-    },
-    paint: {
-      "text-color": "#ffffff",
-      "text-halo-color": "rgba(15, 23, 42, 0.18)",
-      "text-halo-width": 0.4,
+      "circle-color": "rgba(0, 0, 0, 0)",
+      "circle-stroke-color": "rgba(0, 0, 0, 0)",
+      "circle-opacity": 0,
+      "circle-stroke-opacity": 0,
     },
   });
 }
