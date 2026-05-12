@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "import:ticketmaster": "node --env-file=.env.local scripts/importTicketmasterEvents.js",
-    "normalize:ticketmaster": "node --env-file=.env.local scripts/normalizeTicketmasterRawEvents.js"
+    "normalize:ticketmaster": "node --env-file=.env.local scripts/normalizeTicketmasterRawEvents.js",
+    "cleanup:events": "node --env-file=.env.local scripts/cleanupExpiredEvents.js",
+    "cleanup:events:dry": "node --env-file=.env.local scripts/cleanupExpiredEvents.js --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

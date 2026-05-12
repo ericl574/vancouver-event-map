@@ -37,3 +37,6 @@ jobs:
 
       - name: Normalize Ticketmaster raw events
         run: npm run normalize:ticketmaster
+
+      - name: Cleanup expired events
+        run: npm run cleanup:events
