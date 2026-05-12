@@ -543,8 +543,8 @@ async function normalizeTicketmasterRawEvents() {
         throw insertError;
       }
 
-        await upsertEventSource(rawEvent, event, insertedEvent.id);
-        await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+      await upsertEventSource(rawEvent, event, insertedEvent.id);
+      await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
 
       normalizedCount += 1;
       console.log(`Normalized ${event.status}: ${event.title}`);
