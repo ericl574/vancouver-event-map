@@ -599,6 +599,8 @@ export default function EventMap({
   selectedEvent,
   onSelectEvent,
   onSelectLocationGroup,
+  onClearSelection,
+  onMapBackgroundClick,
   userLocation,
   destinationLocation,
 }) {
@@ -613,6 +615,8 @@ export default function EventMap({
   const eventsRef = useRef(events);
   const onSelectEventRef = useRef(onSelectEvent);
   const onSelectLocationGroupRef = useRef(onSelectLocationGroup);
+  const onClearSelectionRef = useRef(onClearSelection);
+  const onMapBackgroundClickRef = useRef(onMapBackgroundClick);
 
   const eventGeoJson = useMemo(() => {
     return createEventGeoJson(events, selectedEvent);
@@ -624,6 +628,8 @@ export default function EventMap({
     eventsRef.current = events;
     onSelectEventRef.current = onSelectEvent;
     onSelectLocationGroupRef.current = onSelectLocationGroup;
+    onClearSelectionRef.current = onClearSelection;
+    onMapBackgroundClickRef.current = onMapBackgroundClick;
     eventGeoJsonRef.current = eventGeoJson;
 
     const map = mapRef.current;
@@ -632,7 +638,14 @@ export default function EventMap({
     if (source?.setData) {
       source.setData(eventGeoJson);
     }
-  }, [events, onSelectEvent, onSelectLocationGroup, eventGeoJson]);
+  }, [
+    events,
+    onSelectEvent,
+    onSelectLocationGroup,
+    onClearSelection,
+    onMapBackgroundClick,
+    eventGeoJson,
+  ]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -743,6 +756,56 @@ export default function EventMap({
       onSelectEventRef.current?.(group.primaryEvent);
     };
 
+    let backgroundPointerStart = null;
+
+    const isEventFeatureAtPoint = (point) => {
+      const interactiveLayers = [
+        EVENT_CLUSTER_LAYER_ID,
+        EVENT_CLUSTER_COUNT_LAYER_ID,
+        EVENT_LOCATION_GROUP_LAYER_ID,
+        EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
+        EVENT_SINGLE_DOT_LAYER_ID,
+        EVENT_SINGLE_ICON_LAYER_ID,
+      ].filter((layerId) => map.getLayer(layerId));
+
+      if (interactiveLayers.length === 0) {
+        return false;
+      }
+
+      const clickedEventFeatures = map.queryRenderedFeatures(point, {
+        layers: interactiveLayers,
+      });
+
+      return clickedEventFeatures.length > 0;
+    };
+
+    const handleMapBackgroundPointerDown = (event) => {
+      backgroundPointerStart = event.point;
+    };
+
+    const handleMapBackgroundPointerUp = (event) => {
+      if (!backgroundPointerStart) {
+        return;
+      }
+
+      const deltaX = event.point.x - backgroundPointerStart.x;
+      const deltaY = event.point.y - backgroundPointerStart.y;
+      const movedDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+      backgroundPointerStart = null;
+
+      if (movedDistance > 6) {
+        return;
+      }
+
+      if (isEventFeatureAtPoint(event.point)) {
+        return;
+      }
+
+      onClearSelectionRef.current?.();
+      onMapBackgroundClickRef.current?.();
+    };
+
     const bindEventLayerHandlers = async () => {
       try {
         await addCategoryIconImages(map);
@@ -766,6 +829,8 @@ export default function EventMap({
 
       map.on("click", EVENT_SINGLE_DOT_LAYER_ID, handleSingleClick);
       map.on("click", EVENT_SINGLE_ICON_LAYER_ID, handleSingleClick);
+      map.on("mousedown", handleMapBackgroundPointerDown);
+      map.on("mouseup", handleMapBackgroundPointerUp);
 
       [
         EVENT_CLUSTER_LAYER_ID,

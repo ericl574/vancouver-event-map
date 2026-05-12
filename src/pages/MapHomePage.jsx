@@ -12,6 +12,36 @@ import { getApprovedEvents } from "../services/eventService";
 import { geocodeAddress } from "../services/geocodingService";
 import { addDistanceFromPoint, filterEvents } from "../utils/eventUtils";
 
+const TIME_FILTER_SUMMARIES = {
+  "24h": {
+    label: "Next 24 hours",
+    description: "Events starting within 1 day",
+  },
+  "3d": {
+    label: "Next 3 days",
+    description: "Events starting within 3 days",
+  },
+  "5d": {
+    label: "Next 5 days",
+    description: "Events starting within 5 days",
+  },
+  "1w": {
+    label: "Next 1 week",
+    description: "Events starting within 7 days",
+  },
+};
+
+function getActiveFilterSummary(filters) {
+  if (filters.exactDate) {
+    return {
+      label: "Exact date",
+      description: `Events happening on ${filters.exactDate}`,
+    };
+  }
+
+  return TIME_FILTER_SUMMARIES[filters.timeRange] ?? null;
+}
+
 function getCurrentPositionAsync() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -44,6 +74,7 @@ export default function MapHomePage() {
   const [selectedLocationGroup, setSelectedLocationGroup] = useState(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isEventListPanelOpen, setIsEventListPanelOpen] = useState(true);
   const [filters, setFilters] = useState({
     timeRange: "all",
     exactDate: "",
@@ -82,7 +113,7 @@ export default function MapHomePage() {
         if (!isMounted) return;
 
         setEvents(approvedEvents);
-        setSelectedEvent(approvedEvents[0] ?? null);
+        setSelectedEvent(null);
       } catch (error) {
         console.error("Failed to load events:", error);
 
@@ -192,7 +223,7 @@ export default function MapHomePage() {
       return;
     }
 
-    setSelectedEvent(sidebarEvents[0]);
+    setSelectedEvent(null);
   }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
 
   function handleSelectEvent(event) {
@@ -202,6 +233,15 @@ export default function MapHomePage() {
     if (event?.distanceKm !== undefined) {
       setNearestEvent(event);
     }
+  }
+
+  function handleClearMapSelection() {
+    setSelectedEvent(null);
+    setSelectedLocationGroup(null);
+  }
+
+  function handleMapBackgroundClick() {
+    setIsFilterOpen(false);
   }
 
   function handleSelectLocationGroup(group) {
@@ -378,6 +418,64 @@ export default function MapHomePage() {
     setNearestError("");
   }
 
+  const activeFilterSummary = getActiveFilterSummary(filters);
+
+  useEffect(() => {
+    if (!isFilterOpen) {
+      return;
+    }
+
+    let pointerStart = null;
+
+    function isInsideFilterUi(target) {
+      return Boolean(
+        target instanceof Element &&
+          target.closest("[data-filter-panel], [data-filter-toggle]")
+      );
+    }
+
+    function handlePointerDown(event) {
+      pointerStart = {
+        x: event.clientX,
+        y: event.clientY,
+        target: event.target,
+      };
+    }
+
+    function handlePointerUp(event) {
+      if (!pointerStart) {
+        return;
+      }
+
+      const deltaX = event.clientX - pointerStart.x;
+      const deltaY = event.clientY - pointerStart.y;
+      const movedDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+      const startedInsideFilterUi = isInsideFilterUi(pointerStart.target);
+      const endedInsideFilterUi = isInsideFilterUi(event.target);
+
+      pointerStart = null;
+
+      if (movedDistance > 6) {
+        return;
+      }
+
+      if (startedInsideFilterUi || endedInsideFilterUi) {
+        return;
+      }
+
+      setIsFilterOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("pointerup", handlePointerUp, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("pointerup", handlePointerUp, true);
+    };
+  }, [isFilterOpen]);
+
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100 text-slate-900">
       <EventMap
@@ -385,6 +483,7 @@ export default function MapHomePage() {
         selectedEvent={selectedEvent}
         onSelectEvent={handleSelectEvent}
         onSelectLocationGroup={handleSelectLocationGroup}
+        onClearSelection={handleClearMapSelection}
         userLocation={userLocation}
         destinationLocation={destinationLocation}
       />
@@ -488,9 +587,10 @@ export default function MapHomePage() {
           <SearchBar
             query={query}
             onQueryChange={handleQueryChange}
-            onFilterClick={() => setIsFilterOpen(true)}
+            onFilterClick={() => setIsFilterOpen((isOpen) => !isOpen)}
             onSearchSubmit={handleSearchLocation}
             isSearchingLocation={isSearchingLocation}
+            activeFilterSummary={activeFilterSummary}
           />
 
           <CategoryChips
@@ -559,6 +659,9 @@ export default function MapHomePage() {
         events={sidebarEvents}
         selectedEvent={selectedEvent}
         onSelectEvent={handleSelectEvent}
+        isOpen={isEventListPanelOpen}
+        onCollapse={() => setIsEventListPanelOpen(false)}
+        onExpand={() => setIsEventListPanelOpen(true)}
         title={sidebarTitle}
         subtitle={sidebarSubtitle}
         onShowAllEvents={
@@ -568,14 +671,13 @@ export default function MapHomePage() {
         }
       />
 
-      <EventPreviewCard event={selectedEvent} />
+      {selectedEvent && <EventPreviewCard event={selectedEvent} />}
 
       <FilterPanel
         isOpen={isFilterOpen}
         filters={filters}
         onChange={setFilters}
         onClose={() => setIsFilterOpen(false)}
-        onReset={handleResetFilters}
       />
     </main>
   );
