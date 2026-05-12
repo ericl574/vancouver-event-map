@@ -9,7 +9,13 @@ export default function CategoryChips({ selectedCategory, onSelectCategory }) {
 
   return (
     <nav
-      className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1"
+      className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-14 pb-1"
+      style={{
+        WebkitMaskImage:
+          "linear-gradient(to right, transparent 0%, black 56px, black calc(100% - 96px), transparent 100%)",
+        maskImage:
+          "linear-gradient(to right, transparent 0%, black 56px, black calc(100% - 96px), transparent 100%)",
+      }}
       aria-label="Event categories"
     >
       <button
