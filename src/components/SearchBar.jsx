@@ -6,6 +6,7 @@ export default function SearchBar({
   onFilterClick,
   onSearchSubmit,
   isSearchingLocation = false,
+  activeFilterSummary,
 }) {
   function handleSubmit(event) {
     event.preventDefault();
@@ -55,12 +56,30 @@ export default function SearchBar({
         </button>
       )}
 
+      {activeFilterSummary && (
+        <button
+          type="button"
+          onClick={onFilterClick}
+          className="hidden max-w-[260px] shrink-0 rounded-2xl border border-pink-300 bg-pink-50 px-4 py-2 text-left transition hover:border-pink-400 hover:bg-pink-100 sm:block"
+          aria-label={`Toggle time filters: ${activeFilterSummary.label}`}
+          data-filter-toggle="true"
+        >
+          <div className="truncate text-sm font-bold text-pink-700">
+            {activeFilterSummary.label}
+          </div>
+          <div className="mt-0.5 truncate text-xs font-medium text-pink-500">
+            {activeFilterSummary.description}
+          </div>
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onFilterClick}
         className="rounded-xl bg-slate-100 p-3 transition hover:bg-slate-200"
-        aria-label="Open time filters"
-        title="Open time filters"
+        aria-label="Toggle time filters"
+        title="Toggle time filters"
+        data-filter-toggle="true"
       >
         <IconSliders className="h-5 w-5 text-slate-700" />
       </button>

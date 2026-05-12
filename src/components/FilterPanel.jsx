@@ -26,13 +26,7 @@ const TIME_RANGE_OPTIONS = [
   },
 ];
 
-export default function FilterPanel({
-  isOpen,
-  filters,
-  onChange,
-  onClose,
-  onReset,
-}) {
+export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
   if (!isOpen) return null;
 
   function updateTimeRange(timeRange) {
@@ -53,24 +47,15 @@ export default function FilterPanel({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[90]">
-      <section className="pointer-events-auto absolute bottom-4 left-4 right-4 rounded-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-auto lg:right-8 lg:top-28 lg:w-[380px]">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-950">
-              Filter events
-            </h2>
-            <p className="text-sm text-slate-500">
-              Results update instantly on the map
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full px-3 py-1 text-sm font-semibold text-slate-500 transition hover:bg-slate-100"
-          >
-            Close
-          </button>
+      <section
+        data-filter-panel="true"
+        className="pointer-events-auto absolute bottom-4 left-4 right-4 rounded-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-auto lg:right-8 lg:top-36 lg:w-[380px]"
+      >
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-slate-950">Filter events</h2>
+          <p className="text-sm text-slate-500">
+            Results update instantly on the map
+          </p>
         </div>
 
         <div className="space-y-5">
@@ -80,7 +65,7 @@ export default function FilterPanel({
                 Quick time range
               </h3>
 
-              {filters.timeRange !== "all" && (
+              {(filters.timeRange !== "all" || filters.exactDate) && (
                 <span className="rounded-full bg-pink-50 px-2 py-1 text-xs font-semibold text-pink-600">
                   Active
                 </span>
@@ -117,26 +102,28 @@ export default function FilterPanel({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Exact date
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Show events happening on one specific day
-                </p>
-              </div>
-
-              {filters.exactDate && (
-                <button
-                  type="button"
-                  onClick={() => updateExactDate("")}
-                  className="rounded-full px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-white hover:text-slate-800"
-                >
-                  Clear
-                </button>
-              )}
+          <div
+            className={`rounded-2xl border p-4 ${
+              filters.exactDate
+                ? "border-pink-300 bg-pink-50"
+                : "border-slate-200 bg-slate-50/70"
+            }`}
+          >
+            <div className="mb-3">
+              <h3
+                className={`text-sm font-bold ${
+                  filters.exactDate ? "text-pink-700" : "text-slate-900"
+                }`}
+              >
+                Exact date
+              </h3>
+              <p
+                className={`text-xs ${
+                  filters.exactDate ? "text-pink-500" : "text-slate-500"
+                }`}
+              >
+                Show events happening on one specific day
+              </p>
             </div>
 
             <input
@@ -146,24 +133,6 @@ export default function FilterPanel({
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
             />
           </div>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onReset}
-            className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-          >
-            Reset
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
-          >
-            Done
-          </button>
         </div>
       </section>
     </div>
