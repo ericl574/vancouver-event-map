@@ -463,6 +463,42 @@ async function findEventBySource(rawEvent, event) {
   return null;
 }
 
+async function findEventByCrossPlatformUrl(event) {
+  const urls = Array.from(
+    new Set([event.source_url, event.ticket_url].filter(Boolean))
+  );
+
+  if (urls.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("event_sources")
+    .select("event_id,source_name,source_url,ticket_url")
+    .or(
+      [
+        `source_url.in.(${urls.map((url) => `"${url}"`).join(",")})`,
+        `ticket_url.in.(${urls.map((url) => `"${url}"`).join(",")})`,
+      ].join(",")
+    )
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  if (data?.[0]?.event_id) {
+    console.log(
+      `Cross-platform URL matched event source: ${event.title} -> ${data[0].source_name}`
+    );
+
+    return { id: data[0].event_id };
+  }
+
+  return null;
+}
+
 async function findExactEventMatch(event) {
   const { data, error } = await supabase
     .from("events")
@@ -527,6 +563,12 @@ async function findExistingEvent(rawEvent, event) {
 
   if (sourceMatch) {
     return sourceMatch;
+  }
+
+  const crossPlatformUrlMatch = await findEventByCrossPlatformUrl(event);
+
+  if (crossPlatformUrlMatch) {
+    return crossPlatformUrlMatch;
   }
 
   const exactMatch = await findExactEventMatch(event);
