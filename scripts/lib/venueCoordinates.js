@@ -81,6 +81,49 @@ const VENUE_COORDINATES_BY_ID = {
   },
 };
 
+const BLUEPRINT_VENUE_COORDINATES_BY_NAME = {
+  [normalizeVenueName("Celebrities")]: {
+    name: "Celebrities",
+    lat: 49.2800,
+    lng: -123.1301,
+  },
+  [normalizeVenueName("Village Studios")]: {
+    name: "Village Studios",
+    lat: 49.2799,
+    lng: -123.1302,
+  },
+  [normalizeVenueName("Commodore Ballroom")]: {
+    name: "Commodore Ballroom",
+    lat: 49.2806,
+    lng: -123.1206,
+  },
+  [normalizeVenueName("Fortune Sound Club")]: {
+    name: "Fortune Sound Club",
+    lat: 49.2803,
+    lng: -123.1002,
+  },
+  [normalizeVenueName("Fox Cabaret")]: {
+    name: "Fox Cabaret",
+    lat: 49.2643,
+    lng: -123.1011,
+  },
+  [normalizeVenueName("Freedom Mobile Arch")]: {
+    name: "Freedom Mobile Arch",
+    lat: 49.2827,
+    lng: -123.0384,
+  },
+  [normalizeVenueName("Malkin Bowl")]: {
+    name: "Malkin Bowl",
+    lat: 49.3010,
+    lng: -123.1444,
+  },
+  [normalizeVenueName("Vogue Theatre")]: {
+    name: "Vogue Theatre",
+    lat: 49.2801,
+    lng: -123.1209,
+  },
+};
+
 const VENUE_COORDINATES_BY_NAME = Object.fromEntries(
   Object.values(VENUE_COORDINATES_BY_ID).map((venue) => [
     normalizeVenueName(venue.name),
@@ -99,9 +142,11 @@ export function getVenueCoordinates(venue) {
     return byId;
   }
 
-  const byName = VENUE_COORDINATES_BY_NAME[normalizeVenueName(venue.venue)];
+  const venueName = normalizeVenueName(venue.venue || venue.name || venue.location_name);
+  const byName = VENUE_COORDINATES_BY_NAME[venueName];
+  const byBlueprintName = BLUEPRINT_VENUE_COORDINATES_BY_NAME[venueName];
 
-  return byName || null;
+  return byName || byBlueprintName || null;
 }
 
 export function isUnsupportedMapVenue(venue) {
