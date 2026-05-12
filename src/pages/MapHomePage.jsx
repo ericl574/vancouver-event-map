@@ -29,6 +29,26 @@ const TIME_FILTER_SUMMARIES = {
     label: "Next 1 week",
     description: "Events starting within 7 days",
   },
+  "30d": {
+    label: "Next 30 days",
+    description: "Default map view",
+  },
+  "3m": {
+    label: "Next 3 months",
+    description: "Planning ahead",
+  },
+  "6m": {
+    label: "Next 6 months",
+    description: "Longer-term events",
+  },
+  "1y": {
+    label: "Next year",
+    description: "Events up to 1 year ahead",
+  },
+  all: {
+    label: "All upcoming",
+    description: "Show every stored upcoming event",
+  },
 };
 
 function getActiveFilterSummary(filters) {
@@ -76,7 +96,7 @@ export default function MapHomePage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isEventListPanelOpen, setIsEventListPanelOpen] = useState(true);
   const [filters, setFilters] = useState({
-    timeRange: "all",
+    timeRange: "30d",
     exactDate: "",
   });
 

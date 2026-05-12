@@ -54,6 +54,10 @@ function getTimeRangeLimit(timeRange) {
   if (timeRange === "3d") return 3 * oneDay;
   if (timeRange === "5d") return 5 * oneDay;
   if (timeRange === "1w") return 7 * oneDay;
+  if (timeRange === "30d") return 30 * oneDay;
+  if (timeRange === "3m") return 90 * oneDay;
+  if (timeRange === "6m") return 180 * oneDay;
+  if (timeRange === "1y") return 365 * oneDay;
 
   return null;
 }

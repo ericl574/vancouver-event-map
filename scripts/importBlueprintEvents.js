@@ -19,7 +19,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SOURCE_NAME = "blueprint";
 const BLUEPRINT_EVENTS_URL = "https://www.thisisblueprint.com/events";
-const IMPORT_DAYS_AHEAD = Number(process.env.BLUEPRINT_EVENTS_DAYS_AHEAD || 180);
+const IMPORT_DAYS_AHEAD = Number(process.env.BLUEPRINT_EVENTS_DAYS_AHEAD || 365);
 const DRY_RUN = process.argv.includes("--dry-run");
 
 const USER_AGENT =

@@ -1,10 +1,5 @@
 const TIME_RANGE_OPTIONS = [
   {
-    id: "all",
-    label: "Any time",
-    description: "Show all upcoming events",
-  },
-  {
     id: "24h",
     label: "Next 24 hours",
     description: "Events starting within 1 day",
@@ -23,6 +18,31 @@ const TIME_RANGE_OPTIONS = [
     id: "1w",
     label: "Next 1 week",
     description: "Events starting within 7 days",
+  },
+  {
+    id: "30d",
+    label: "Next 30 days",
+    description: "Default map view",
+  },
+  {
+    id: "3m",
+    label: "Next 3 months",
+    description: "Plan ahead without crowding the map",
+  },
+  {
+    id: "6m",
+    label: "Next 6 months",
+    description: "Show longer-term concerts and major events",
+  },
+  {
+    id: "1y",
+    label: "Next year",
+    description: "Events up to 1 year ahead",
+  },
+  {
+    id: "all",
+    label: "All upcoming",
+    description: "Show every stored upcoming event",
   },
 ];
 
