@@ -19,6 +19,22 @@ const EVENT_SINGLE_ICON_LAYER_ID = "event-single-icons";
 
 const MAP_CATEGORY_ICON_SIZE = 24;
 
+function normalizeLocationText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/\bstreet\b/g, "st")
+    .replace(/\bst\.?\b/g, "st")
+    .replace(/\bavenue\b/g, "ave")
+    .replace(/\bave\.?\b/g, "ave")
+    .replace(/\broad\b/g, "rd")
+    .replace(/\brd\.?\b/g, "rd")
+    .replace(/\bboulevard\b/g, "blvd")
+    .replace(/\bblvd\.?\b/g, "blvd")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function getLocationGroupKey(event) {
   const lat = Number(event.lat);
   const lng = Number(event.lng);
@@ -27,7 +43,23 @@ function getLocationGroupKey(event) {
     return "";
   }
 
-  return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const venue = normalizeLocationText(event.venue);
+  const city = normalizeLocationText(event.city);
+  const address = normalizeLocationText(event.address);
+
+  if (venue && city) {
+    return `venue:${city}:${venue}`;
+  }
+
+  if (venue && address) {
+    return `venue-address:${venue}:${address}`;
+  }
+
+  if (address && city) {
+    return `address:${city}:${address}`;
+  }
+
+  return `coords:${lat.toFixed(4)},${lng.toFixed(4)}`;
 }
 
 function getEventSortValue(event) {
