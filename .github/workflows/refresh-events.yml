@@ -38,5 +38,11 @@ jobs:
       - name: Normalize Ticketmaster raw events
         run: npm run normalize:ticketmaster
 
+      - name: Import UBC raw events
+        run: npm run import:ubc
+
+      - name: Normalize UBC raw events
+        run: npm run normalize:ubc
+
       - name: Cleanup expired events
         run: npm run cleanup:events
