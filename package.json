@@ -15,7 +15,9 @@
     "import:ubc": "node --env-file=.env.local scripts/importUbcEvents.js",
     "import:ubc:dry": "node --env-file=.env.local scripts/importUbcEvents.js --dry-run",
     "normalize:ubc": "node --env-file=.env.local scripts/normalizeUbcRawEvents.js",
-    "normalize:ubc:dry": "node --env-file=.env.local scripts/normalizeUbcRawEvents.js --dry-run"
+    "normalize:ubc:dry": "node --env-file=.env.local scripts/normalizeUbcRawEvents.js --dry-run",
+    "import:blueprint": "node --env-file=.env.local scripts/importBlueprintEvents.js",
+    "import:blueprint:dry": "node --env-file=.env.local scripts/importBlueprintEvents.js --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
