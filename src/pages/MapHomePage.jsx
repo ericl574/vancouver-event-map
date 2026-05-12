@@ -7,6 +7,7 @@ import EventPreviewCard from "../components/EventPreviewCard";
 import FilterPanel from "../components/FilterPanel";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
+import { getCurrentSession, signOutUser } from "../services/authService";
 import { getApprovedEvents } from "../services/eventService";
 import { geocodeAddress } from "../services/geocodingService";
 import { addDistanceFromPoint, filterEvents } from "../utils/eventUtils";
@@ -63,6 +64,11 @@ export default function MapHomePage() {
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [locationSearchError, setLocationSearchError] = useState("");
 
+  const [authSession, setAuthSession] = useState(null);
+  const [isCheckingUserSession, setIsCheckingUserSession] = useState(true);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [authError, setAuthError] = useState("");
+
   useEffect(() => {
     let isMounted = true;
 
@@ -93,6 +99,40 @@ export default function MapHomePage() {
     }
 
     loadEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadUserSession() {
+      try {
+        setIsCheckingUserSession(true);
+        setAuthError("");
+
+        const session = await getCurrentSession();
+
+        if (!isMounted) return;
+
+        setAuthSession(session);
+      } catch (error) {
+        console.error("Failed to load user session:", error);
+
+        if (!isMounted) return;
+
+        setAuthSession(null);
+        setAuthError("Could not check login status.");
+      } finally {
+        if (isMounted) {
+          setIsCheckingUserSession(false);
+        }
+      }
+    }
+
+    loadUserSession();
 
     return () => {
       isMounted = false;
@@ -309,6 +349,25 @@ export default function MapHomePage() {
     }
   }
 
+  async function handleUserSignOut() {
+    try {
+      setAuthError("");
+      setIsAccountMenuOpen(false);
+
+      await signOutUser();
+
+      setAuthSession(null);
+    } catch (error) {
+      console.error("User sign out failed:", error);
+      setAuthError("Could not log out.");
+    }
+  }
+
+  function getUserInitial() {
+    const email = authSession?.user?.email || "";
+    return email.trim().charAt(0).toUpperCase() || "U";
+  }
+
   function handleResetFilters() {
     setFilters({
       timeRange: "all",
@@ -329,6 +388,98 @@ export default function MapHomePage() {
         userLocation={userLocation}
         destinationLocation={destinationLocation}
       />
+
+      <div
+        className="absolute right-4 top-5 z-[60] flex flex-col items-end gap-3"
+        aria-label="Map quick controls"
+      >
+        <div className="flex w-full flex-col items-end gap-3">
+          <div className="self-end" aria-label="User account">
+            {authSession?.user ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)}
+                  className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-600 text-lg font-black text-white shadow-xl shadow-purple-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:scale-105"
+                  aria-label="Open account menu"
+                  title={authSession.user.email}
+                >
+                  <span className="drop-shadow-sm">{getUserInitial()}</span>
+                </button>
+
+                {isAccountMenuOpen && (
+                  <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/95 text-slate-800 shadow-2xl shadow-slate-900/20 backdrop-blur">
+                    <div className="border-b border-slate-100 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Signed in as
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold">
+                        {authSession.user.email}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleUserSignOut}
+                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
+                    >
+                      Log out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <a
+                href="/login"
+                className="flex h-12 items-center rounded-full bg-slate-950 px-4 text-sm font-bold text-white shadow-xl shadow-slate-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:bg-pink-600"
+              >
+                {isCheckingUserSession ? "Checking..." : "Log in"}
+              </a>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLocating}
+            className="flex h-12 w-12 items-center justify-center self-end rounded-full bg-white/95 text-slate-800 shadow-xl shadow-slate-900/15 ring-1 ring-slate-200/80 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+            aria-label="Use current location"
+            title="Use current location"
+          >
+            {isLocating ? (
+              <span className="flex h-5 w-5 items-center justify-center text-sm font-black">
+                …
+              </span>
+            ) : (
+              <IconLocate className="h-5 w-5" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleFindNearestEvent}
+            disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
+            className="group flex items-center justify-end gap-2 self-end rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Find nearest event"
+            title="Find nearest event"
+          >
+            <span className="transition group-hover:rotate-12">✨</span>
+            <span>{isFindingNearest ? "Finding..." : "Nearest"}</span>
+          </button>
+        </div>
+
+        {authError && (
+          <div className="max-w-56 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
+            {authError}
+          </div>
+        )}
+
+        {locationError && (
+          <div className="max-w-64 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm text-red-600 shadow-lg backdrop-blur">
+            {locationError}
+          </div>
+        )}
+      </div>
 
       {!isLoadingEvents && displayedEvents.length === 0 && <EmptyState />}
 
@@ -391,42 +542,6 @@ export default function MapHomePage() {
 )}
         </div>
       </header>
-
-      <div className="absolute right-4 top-36 z-50 flex flex-col items-end gap-2">
-        <button
-          type="button"
-          onClick={handleUseCurrentLocation}
-          disabled={isLocating}
-          className="rounded-full bg-white p-3 shadow-lg transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
-          aria-label="Use current location"
-          title="Use current location"
-        >
-          {isLocating ? (
-            <span className="flex h-5 w-5 items-center justify-center text-sm font-bold text-slate-700">
-              …
-            </span>
-          ) : (
-            <IconLocate className="h-5 w-5 text-slate-700" />
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleFindNearestEvent}
-          disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
-          className="rounded-full border border-slate-200 bg-white/95 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-          aria-label="Find nearest event"
-          title="Find nearest event"
-        >
-          {isFindingNearest ? "Finding..." : "Nearest event"}
-        </button>
-
-        {locationError && (
-          <div className="max-w-64 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm text-red-600 shadow-lg backdrop-blur">
-            {locationError}
-          </div>
-        )}
-      </div>
 
       {(isLoadingEvents || eventsError) && (
         <div className="absolute left-1/2 top-32 z-50 -translate-x-1/2 rounded-2xl bg-white/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
