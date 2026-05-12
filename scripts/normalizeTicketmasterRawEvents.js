@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 import { createClient } from "@supabase/supabase-js";
+import { findBestEventMatch } from "./lib/eventDedupe.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 
@@ -420,6 +421,91 @@ async function upsertEventSource(rawEvent, event, eventId) {
   }
 }
 
+async function findEventBySource(rawEvent, event) {
+  const sourceName = rawEvent.source_name || SOURCE_NAME;
+
+  if (rawEvent.external_id) {
+    const { data, error } = await supabase
+      .from("event_sources")
+      .select("event_id")
+      .eq("source_name", sourceName)
+      .eq("external_id", rawEvent.external_id)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.[0]?.event_id) {
+      return { id: data[0].event_id };
+    }
+  }
+
+  if (event.source_url) {
+    const { data, error } = await supabase
+      .from("event_sources")
+      .select("event_id")
+      .eq("source_name", sourceName)
+      .eq("source_url", event.source_url)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.[0]?.event_id) {
+      return { id: data[0].event_id };
+    }
+  }
+
+  return null;
+}
+
+async function findExactEventMatch(event) {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id")
+    .eq("title", event.title)
+    .eq("event_date", event.event_date)
+    .eq("start_time", event.start_time)
+    .eq("venue", event.venue)
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.[0] || null;
+}
+
+async function findFuzzyEventMatch(event) {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id,title,event_date,start_time,venue,lat,lng")
+    .eq("event_date", event.event_date)
+    .order("created_at", { ascending: true })
+    .limit(150);
+
+  if (error) {
+    throw error;
+  }
+
+  const bestMatch = findBestEventMatch(data || [], event);
+
+  if (!bestMatch) {
+    return null;
+  }
+
+  console.log(
+    `Fuzzy matched event: ${event.title} -> ${bestMatch.event.title} (score ${bestMatch.score})`
+  );
+
+  return { id: bestMatch.event.id };
+}
+
 async function findExistingEvent(rawEvent, event) {
   if (rawEvent.normalized_event_id) {
     const { data, error } = await supabase
@@ -437,38 +523,19 @@ async function findExistingEvent(rawEvent, event) {
     }
   }
 
-  if (event.source_url) {
-    const { data, error } = await supabase
-      .from("events")
-      .select("id")
-      .eq("source_url", event.source_url)
-      .order("created_at", { ascending: true })
-      .limit(1);
+  const sourceMatch = await findEventBySource(rawEvent, event);
 
-    if (error) {
-      throw error;
-    }
-
-    if (data?.[0]) {
-      return data[0];
-    }
+  if (sourceMatch) {
+    return sourceMatch;
   }
 
-  const { data, error } = await supabase
-    .from("events")
-    .select("id")
-    .eq("title", event.title)
-    .eq("event_date", event.event_date)
-    .eq("start_time", event.start_time)
-    .eq("venue", event.venue)
-    .order("created_at", { ascending: true })
-    .limit(1);
+  const exactMatch = await findExactEventMatch(event);
 
-  if (error) {
-    throw error;
+  if (exactMatch) {
+    return exactMatch;
   }
 
-  return data?.[0] || null;
+  return findFuzzyEventMatch(event);
 }
 
 async function fetchRawEventsToNormalize() {
