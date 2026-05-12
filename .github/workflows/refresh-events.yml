@@ -44,5 +44,11 @@ jobs:
       - name: Normalize UBC raw events
         run: npm run normalize:ubc
 
+      - name: Import Blueprint raw events
+        run: npm run import:blueprint
+
+      - name: Normalize Blueprint raw events
+        run: npm run normalize:blueprint
+
       - name: Cleanup expired events
         run: npm run cleanup:events
