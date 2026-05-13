@@ -19,7 +19,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SOURCE_NAME = "ticketmaster";
 const BATCH_LIMIT = Number(process.env.TICKETMASTER_NORMALIZE_BATCH_LIMIT || 500);
-const AUTO_APPROVE_MAX_DAYS_AHEAD = 180;
+const AUTO_APPROVE_MAX_DAYS_AHEAD = 365;
 
 const GREATER_VANCOUVER_BOUNDS = {
   minLat: 49.0,
