@@ -23,7 +23,7 @@ const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/147 Safari/537.36";
 
 const PER_PAGE = Number(process.env.UBC_EVENTS_PER_PAGE || 50);
-const MAX_PAGES = Number(process.env.UBC_EVENTS_MAX_PAGES || 3);
+const MAX_PAGES = Number(process.env.UBC_EVENTS_MAX_PAGES || 10);
 const IMPORT_DAYS_AHEAD = Number(process.env.UBC_EVENTS_DAYS_AHEAD || 365);
 const DRY_RUN = process.argv.includes("--dry-run");
 
