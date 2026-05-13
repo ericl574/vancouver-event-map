@@ -24,7 +24,7 @@ const USER_AGENT =
 
 const PER_PAGE = Number(process.env.UBC_EVENTS_PER_PAGE || 50);
 const MAX_PAGES = Number(process.env.UBC_EVENTS_MAX_PAGES || 3);
-const IMPORT_DAYS_AHEAD = Number(process.env.UBC_EVENTS_DAYS_AHEAD || 90);
+const IMPORT_DAYS_AHEAD = Number(process.env.UBC_EVENTS_DAYS_AHEAD || 365);
 const DRY_RUN = process.argv.includes("--dry-run");
 
 function toDateTimeText(date) {
