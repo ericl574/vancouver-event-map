@@ -658,44 +658,23 @@ export default function MapHomePage() {
                       </p>
                     </div>
 
-                    <div className="border-b border-slate-100 px-4 py-3">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <a
+                      href="/favorites"
+                      className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-pink-50"
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">
                           Favorite List
                         </p>
-                        <span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-bold text-pink-600">
-                          {savedEvents.length}
-                        </span>
+                        <p className="mt-0.5 text-xs font-medium text-slate-500">
+                          Search and manage saved events
+                        </p>
                       </div>
 
-                      {savedEvents.length === 0 ? (
-                        <p className="text-sm text-slate-500">
-                          No saved events yet.
-                        </p>
-                      ) : (
-                        <div className="no-scrollbar max-h-52 space-y-2 overflow-y-auto pr-1">
-                          {savedEvents.map((savedEvent) => (
-                            <button
-                              key={savedEvent.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedLocationGroup(null);
-                                setSelectedEvent(savedEvent);
-                                setIsAccountMenuOpen(false);
-                              }}
-                              className="block w-full rounded-2xl bg-slate-50 px-3 py-2 text-left transition hover:bg-pink-50"
-                            >
-                              <p className="line-clamp-1 text-sm font-bold text-slate-800">
-                                {savedEvent.title}
-                              </p>
-                              <p className="mt-0.5 line-clamp-1 text-xs font-medium text-slate-500">
-                                {savedEvent.date} · {savedEvent.venue || savedEvent.area}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                      <span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-bold text-pink-600">
+                        {savedEvents.length}
+                      </span>
+                    </a>
 
                     <button
                       type="button"

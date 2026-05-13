@@ -1,6 +1,7 @@
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminReviewPage from "./pages/AdminReviewPage";
 import LoginPage from "./pages/LoginPage";
+import FavoritesPage from "./pages/FavoritesPage";
 import MapHomePage from "./pages/MapHomePage";
 
 export default function App() {
@@ -16,6 +17,10 @@ export default function App() {
 
   if (pathname === "/admin") {
     return <AdminReviewPage />;
+  }
+
+  if (pathname === "/favorites") {
+    return <FavoritesPage />;
   }
 
   return <MapHomePage />;
