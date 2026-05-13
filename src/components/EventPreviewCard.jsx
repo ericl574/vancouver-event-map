@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
+import { inferMusicGenres } from "../utils/musicGenreUtils";
 import {
   IconBookmark,
   IconCalendarPlus,
@@ -13,6 +14,7 @@ export default function EventPreviewCard({ event }) {
   if (!event) return null;
 
   const category = getCategoryById(event.category);
+  const musicGenres = inferMusicGenres(event);
 
   async function handleShareEvent() {
     const eventUrl = `${window.location.origin}/?event=${event.id}`;
@@ -140,6 +142,27 @@ ${event.price}`;
       <p className="mt-3 line-clamp-3 text-sm text-slate-600">
         {event.description}
       </p>
+
+      {musicGenres.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
+            Music analysis
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {musicGenres.map((genre) => (
+              <span
+                key={genre.id}
+                className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-600 ring-1 ring-pink-100"
+              >
+                {genre.label}
+              </span>
+            ))}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Inferred from the event title, description, venue, and tags.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
         <div className="rounded-2xl bg-slate-100 p-3">

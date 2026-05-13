@@ -5,12 +5,14 @@ import EventListPanel from "../components/EventListPanel";
 import EventMap from "../components/EventMap";
 import EventPreviewCard from "../components/EventPreviewCard";
 import FilterPanel from "../components/FilterPanel";
+import MusicGenreChips from "../components/MusicGenreChips";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
 import { getCurrentSession, signOutUser } from "../services/authService";
 import { getApprovedEvents } from "../services/eventService";
 import { geocodeAddress } from "../services/geocodingService";
 import { addDistanceFromPoint, filterEvents } from "../utils/eventUtils";
+import { matchesMusicGenre } from "../utils/musicGenreUtils";
 
 const TIME_FILTER_SUMMARIES = {
   "24h": {
@@ -89,6 +91,8 @@ function getCurrentPositionAsync() {
 export default function MapHomePage() {
   const [events, setEvents] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedMusicGenre, setSelectedMusicGenre] = useState("all");
+  const [isMusicGenrePanelOpen, setIsMusicGenrePanelOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedLocationGroup, setSelectedLocationGroup] = useState(null);
@@ -196,9 +200,19 @@ export default function MapHomePage() {
     return filterEvents(events, selectedCategory, eventSearchQuery, filters);
   }, [events, selectedCategory, eventSearchQuery, filters]);
 
+  const musicGenreFilteredEvents = useMemo(() => {
+    if (selectedCategory !== "music") {
+      return filteredEvents;
+    }
+
+    return filteredEvents.filter((event) =>
+      matchesMusicGenre(event, selectedMusicGenre)
+    );
+  }, [filteredEvents, selectedCategory, selectedMusicGenre]);
+
   const displayedEvents = useMemo(() => {
-    return addDistanceFromPoint(filteredEvents, destinationLocation);
-  }, [filteredEvents, destinationLocation]);
+    return addDistanceFromPoint(musicGenreFilteredEvents, destinationLocation);
+  }, [musicGenreFilteredEvents, destinationLocation]);
 
   const sidebarEvents = selectedLocationGroup?.events ?? displayedEvents;
 
@@ -220,7 +234,7 @@ export default function MapHomePage() {
     setSelectedLocationGroup(null);
     setNearestEvent(null);
     setNearestError("");
-  }, [selectedCategory, query, filters]);
+  }, [selectedCategory, selectedMusicGenre, query, filters]);
 
   useEffect(() => {
     if (sidebarEvents.length === 0) {
@@ -245,6 +259,25 @@ export default function MapHomePage() {
 
     setSelectedEvent(null);
   }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
+
+  function handleSelectCategory(categoryId) {
+    setSelectedCategory(categoryId);
+
+    if (categoryId === "music") {
+      setIsMusicGenrePanelOpen(true);
+      return;
+    }
+
+    setSelectedMusicGenre("all");
+    setIsMusicGenrePanelOpen(false);
+  }
+
+  function handleSelectMusicGenre(genreId) {
+    setSelectedMusicGenre(genreId);
+    setSelectedLocationGroup(null);
+    setNearestEvent(null);
+    setNearestError("");
+  }
 
   function handleSelectEvent(event) {
     setSelectedLocationGroup(null);
@@ -373,7 +406,7 @@ export default function MapHomePage() {
       }
 
       const eventsWithDistance = addDistanceFromPoint(
-        filteredEvents,
+        musicGenreFilteredEvents,
         location
       ).filter((event) => Number.isFinite(event.distanceKm));
 
@@ -439,6 +472,33 @@ export default function MapHomePage() {
   }
 
   const activeFilterSummary = getActiveFilterSummary(filters);
+
+  useEffect(() => {
+    if (!isMusicGenrePanelOpen) {
+      return;
+    }
+
+    function isInsideMusicGenreUi(target) {
+      return Boolean(
+        target instanceof Element &&
+          target.closest("[data-music-genre-panel], [data-music-category-toggle]")
+      );
+    }
+
+    function handlePointerDown(event) {
+      if (isInsideMusicGenreUi(event.target)) {
+        return;
+      }
+
+      setIsMusicGenrePanelOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [isMusicGenrePanelOpen]);
 
   useEffect(() => {
     if (!isFilterOpen) {
@@ -613,10 +673,19 @@ export default function MapHomePage() {
             activeFilterSummary={activeFilterSummary}
           />
 
-          <CategoryChips
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-          />
+          <div data-music-category-toggle="true">
+            <CategoryChips
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+            />
+          </div>
+
+          {selectedCategory === "music" && isMusicGenrePanelOpen && (
+            <MusicGenreChips
+              selectedGenre={selectedMusicGenre}
+              onSelectGenre={handleSelectMusicGenre}
+            />
+          )}
 
           {(destinationLocation || locationSearchError) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">

@@ -69,16 +69,60 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
     <div className="pointer-events-none absolute inset-0 z-[90]">
       <section
         data-filter-panel="true"
-          className="pointer-events-auto absolute bottom-4 left-4 right-4 flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-auto lg:right-8 lg:top-36 lg:max-h-[calc(100vh-10.25rem)] lg:w-[380px]"
+        className="pointer-events-auto absolute bottom-4 left-4 right-4 flex max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden overflow-x-hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-auto lg:right-8 lg:top-36 lg:max-h-[calc(100vh-10.25rem)] lg:w-[380px] lg:max-w-[380px]"
       >
-          <div className="mb-5 shrink-0">
-          <h2 className="text-lg font-bold text-slate-950">Filter events</h2>
-          <p className="text-sm text-slate-500">
-            Results update instantly on the map
-          </p>
+        <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">Filter events</h2>
+            <p className="text-sm text-slate-500">
+              Results update instantly on the map
+            </p>
+          </div>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-slate-200 hover:text-slate-800"
+            >
+              Close
+            </button>
+          )}
         </div>
 
-          <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pb-3 pr-1">
+        <div className="no-scrollbar min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden pb-3 pr-1">
+          <div
+            className={`rounded-2xl border p-4 ${
+              filters.exactDate
+                ? "border-pink-300 bg-pink-50"
+                : "border-slate-200 bg-slate-50/70"
+            }`}
+          >
+            <div className="mb-3">
+              <h3
+                className={`text-sm font-bold ${
+                  filters.exactDate ? "text-pink-700" : "text-slate-900"
+                }`}
+              >
+                Exact date
+              </h3>
+              <p
+                className={`text-xs ${
+                  filters.exactDate ? "text-pink-500" : "text-slate-500"
+                }`}
+              >
+                Show events happening on one specific day
+              </p>
+            </div>
+
+            <input
+              type="date"
+              value={filters.exactDate || ""}
+              onChange={(event) => updateExactDate(event.target.value)}
+              className="block w-full min-w-0 max-w-full box-border rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+            />
+          </div>
+
           <div>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900">
@@ -120,38 +164,6 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
                 );
               })}
             </div>
-          </div>
-
-          <div
-            className={`rounded-2xl border p-4 ${
-              filters.exactDate
-                ? "border-pink-300 bg-pink-50"
-                : "border-slate-200 bg-slate-50/70"
-            }`}
-          >
-            <div className="mb-3">
-              <h3
-                className={`text-sm font-bold ${
-                  filters.exactDate ? "text-pink-700" : "text-slate-900"
-                }`}
-              >
-                Exact date
-              </h3>
-              <p
-                className={`text-xs ${
-                  filters.exactDate ? "text-pink-500" : "text-slate-500"
-                }`}
-              >
-                Show events happening on one specific day
-              </p>
-            </div>
-
-            <input
-              type="date"
-              value={filters.exactDate || ""}
-              onChange={(event) => updateExactDate(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
-            />
           </div>
         </div>
       </section>
