@@ -39,6 +39,7 @@ export default function EventPreviewCard({ event, authSession }) {
   const [shareMessage, setShareMessage] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaved, setIsSaved] = useState(false);
+  const [isCalendarMenuOpen, setIsCalendarMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!event?.id) {
@@ -130,7 +131,7 @@ ${event.price}`;
     }, 1800);
   }
 
-  function handleAddToCalendar() {
+  function handleAddToGoogleCalendar() {
     const start = buildCalendarDate(event.date, event.startTime);
     const end = buildCalendarDate(event.date, event.endTime);
 
@@ -153,7 +154,67 @@ ${event.price}`;
     );
     calendarUrl.searchParams.set("location", `${event.venue}, ${event.area}`);
 
+    setIsCalendarMenuOpen(false);
     window.open(calendarUrl.toString(), "_blank", "noopener,noreferrer");
+  }
+
+  function handleDownloadCalendarFile() {
+    const start = buildCalendarDate(event.date, event.startTime);
+    const end = buildCalendarDate(event.date, event.endTime);
+
+    const finalEnd =
+      end && end > start
+        ? end
+        : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Vancouver Event Map//Event Calendar//EN",
+      "BEGIN:VEVENT",
+      `UID:${event.id}@vancouver-event-map`,
+      `DTSTAMP:${formatGoogleCalendarDate(new Date())}`,
+      `DTSTART:${formatGoogleCalendarDate(start)}`,
+      `DTEND:${formatGoogleCalendarDate(finalEnd)}`,
+      `SUMMARY:${escapeIcsText(event.title)}`,
+      `DESCRIPTION:${escapeIcsText(event.description || "Event from Vancouver Event Map")}`,
+      `LOCATION:${escapeIcsText(`${event.venue}, ${event.area}`)}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    const blob = new Blob([icsContent], {
+      type: "text/calendar;charset=utf-8",
+    });
+
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = downloadUrl;
+    link.download = `${slugifyFileName(event.title || "event")}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(downloadUrl);
+    setIsCalendarMenuOpen(false);
+  }
+
+  function escapeIcsText(value) {
+    return String(value ?? "")
+      .replace(/\\/g, "\\\\")
+      .replace(/\n/g, "\\n")
+      .replace(/,/g, "\\,")
+      .replace(/;/g, "\\;");
+  }
+
+  function slugifyFileName(value) {
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "event";
   }
 
   function buildCalendarDate(dateText, timeText) {
@@ -286,14 +347,37 @@ ${event.price}`;
           View Details
         </button>
 
-        <button
-          type="button"
-          onClick={handleAddToCalendar}
-          className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-          aria-label="Add to calendar"
-        >
-          <IconCalendarPlus className="h-5 w-5" />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
+            className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            aria-label="Add to calendar"
+            title="Add to calendar"
+          >
+            <IconCalendarPlus className="h-5 w-5" />
+          </button>
+
+          {isCalendarMenuOpen && (
+            <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
+              <button
+                type="button"
+                onClick={handleAddToGoogleCalendar}
+                className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+              >
+                Google Calendar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadCalendarFile}
+                className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
+              >
+                Computer Calendar (.ics)
+              </button>
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
