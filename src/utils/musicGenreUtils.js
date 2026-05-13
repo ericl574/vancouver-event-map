@@ -1,8 +1,4 @@
-import { musicGenres } from "../data/musicGenres";
-
-function normalizeText(value) {
-  return String(value ?? "").toLowerCase();
-}
+import { inferEventSubcategories, matchesEventSubcategory } from "./categoryTaxonomyUtils";
 
 export function getMusicSearchText(event) {
   return [
@@ -25,25 +21,7 @@ export function inferMusicGenres(event) {
     return [];
   }
 
-  const searchText = getMusicSearchText(event);
-
-  const matchedGenres = musicGenres
-    .filter((genre) => genre.id !== "all")
-    .filter((genre) =>
-      genre.keywords.some((keyword) => searchText.includes(normalizeText(keyword)))
-    );
-
-  if (matchedGenres.length > 0) {
-    return matchedGenres;
-  }
-
-  return [
-    {
-      id: "other",
-      label: "Music",
-      keywords: [],
-    },
-  ];
+  return inferEventSubcategories(event);
 }
 
 export function getPrimaryMusicGenre(event) {
@@ -51,13 +29,5 @@ export function getPrimaryMusicGenre(event) {
 }
 
 export function matchesMusicGenre(event, selectedMusicGenre) {
-  if (event.category !== "music") {
-    return false;
-  }
-
-  if (!selectedMusicGenre || selectedMusicGenre === "all") {
-    return true;
-  }
-
-  return inferMusicGenres(event).some((genre) => genre.id === selectedMusicGenre);
+  return matchesEventSubcategory(event, "music", selectedMusicGenre);
 }

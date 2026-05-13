@@ -1,3 +1,5 @@
+import { categoryMatchesEvent } from "./categoryTaxonomyUtils";
+
 function getEventStartDate(event) {
   const eventDate =
     event.event_date ??
@@ -114,20 +116,12 @@ function matchesTimeRange(event, timeRange) {
   return eventDay >= today && eventDay <= rangeEnd;
 }
 
-function isFreeEvent(event) {
-  const price = String(event.price ?? "").toLowerCase();
-
-  return event.is_free === true || event.isFree === true || price === "free";
-}
 
 export function filterEvents(events, selectedCategory, query, filters = {}) {
   const normalizedQuery = query.trim().toLowerCase();
 
   return events.filter((event) => {
-    const matchesCategory =
-      selectedCategory === "all" ||
-      (selectedCategory === "free" && isFreeEvent(event)) ||
-      event.category === selectedCategory;
+    const matchesCategory = categoryMatchesEvent(event, selectedCategory);
 
     const searchable = [
       event.title,

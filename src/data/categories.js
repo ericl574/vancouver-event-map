@@ -1,78 +1,87 @@
-export const categories = [
-  {
-    id: "music",
-    label: "Music",
-    icon: "music",
-    colorClass: "bg-blue-500",
-    hex: "#3b82f6",
-  },
-  {
-    id: "festival",
-    label: "Festival",
-    icon: "festival",
-    colorClass: "bg-pink-500",
-    hex: "#ec4899",
-  },
-  {
-    id: "comedy",
-    label: "Comedy",
-    icon: "comedy",
-    colorClass: "bg-yellow-500",
-    hex: "#eab308",
-  },
-  {
-    id: "art",
-    label: "Art / Exhibition",
+import { categoryTaxonomy, visibleCategories } from "./categoryTaxonomy";
+
+const legacyCategoryOverrides = {
+  comedy: {
+    id: "arts",
+    label: "Arts & Comedy",
     icon: "art",
     colorClass: "bg-purple-500",
     hex: "#a855f7",
   },
-  {
-    id: "food",
-    label: "Food / Market",
-    icon: "food",
-    colorClass: "bg-orange-500",
-    hex: "#f97316",
+  art: {
+    id: "arts",
+    label: "Arts & Comedy",
+    icon: "art",
+    colorClass: "bg-purple-500",
+    hex: "#a855f7",
   },
-  {
-    id: "workshop",
-    label: "Workshop",
+  workshop: {
+    id: "learning",
+    label: "Learning",
     icon: "workshop",
     colorClass: "bg-emerald-500",
     hex: "#10b981",
   },
-  {
-    id: "career",
-    label: "Career / Networking",
-    icon: "career",
-    colorClass: "bg-cyan-500",
-    hex: "#06b6d4",
+  career: {
+    id: "learning",
+    label: "Learning",
+    icon: "workshop",
+    colorClass: "bg-emerald-500",
+    hex: "#10b981",
   },
-  {
-    id: "student",
-    label: "Student",
-    icon: "student",
-    colorClass: "bg-indigo-500",
-    hex: "#6366f1",
+  student: {
+    id: "learning",
+    label: "Learning",
+    icon: "workshop",
+    colorClass: "bg-emerald-500",
+    hex: "#10b981",
   },
-  {
-    id: "nightlife",
-    label: "Nightlife",
-    icon: "nightlife",
-    colorClass: "bg-fuchsia-500",
-    hex: "#d946ef",
-  },
-  {
-    id: "free",
-    label: "Free Events",
-    icon: "free",
-    colorClass: "bg-green-500",
-    hex: "#22c55e",
-  },
-];
+};
+
+export const categories = visibleCategories.map((category) => ({
+  id: category.id,
+  label: category.label,
+  icon: category.icon,
+  colorClass: "bg-pink-500",
+  hex: category.hex,
+}));
 
 export function getCategoryById(id) {
-  return categories.find((category) => category.id === id) ?? {
+  const normalizedId = String(id ?? "").toLowerCase();
+
+  const directCategory = categoryTaxonomy.find(
+    (category) => category.id === normalizedId
+  );
+
+  if (directCategory) {
+    return {
+      id: directCategory.id,
+      label: directCategory.label,
+      icon: directCategory.icon,
+      colorClass: "bg-pink-500",
+      hex: directCategory.hex,
+    };
+  }
+
+  if (legacyCategoryOverrides[normalizedId]) {
+    return legacyCategoryOverrides[normalizedId];
+  }
+
+  const matchedCategory = categoryTaxonomy.find((category) =>
+    category.legacyCategoryIds.includes(normalizedId)
+  );
+
+  if (matchedCategory) {
+    return {
+      id: matchedCategory.id,
+      label: matchedCategory.label,
+      icon: matchedCategory.icon,
+      colorClass: "bg-pink-500",
+      hex: matchedCategory.hex,
+    };
+  }
+
+  return {
     id: "unknown",
     label: "Event",
     icon: "event",

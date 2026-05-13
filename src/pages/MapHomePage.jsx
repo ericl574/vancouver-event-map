@@ -5,14 +5,14 @@ import EventListPanel from "../components/EventListPanel";
 import EventMap from "../components/EventMap";
 import EventPreviewCard from "../components/EventPreviewCard";
 import FilterPanel from "../components/FilterPanel";
-import MusicGenreChips from "../components/MusicGenreChips";
+import CategoryExplorePanel from "../components/CategoryExplorePanel";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
 import { getCurrentSession, signOutUser } from "../services/authService";
 import { getApprovedEvents } from "../services/eventService";
 import { geocodeAddress } from "../services/geocodingService";
 import { addDistanceFromPoint, filterEvents } from "../utils/eventUtils";
-import { matchesMusicGenre } from "../utils/musicGenreUtils";
+import { categoryHasExplorePanel, matchesEventSubcategory } from "../utils/categoryTaxonomyUtils";
 
 const TIME_FILTER_SUMMARIES = {
   "24h": {
@@ -105,8 +105,8 @@ function getCurrentPositionAsync() {
 export default function MapHomePage() {
   const [events, setEvents] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedMusicGenre, setSelectedMusicGenre] = useState("all");
-  const [isMusicGenrePanelOpen, setIsMusicGenrePanelOpen] = useState(false);
+  const [selectedSubcategory, setSelectedSubcategory] = useState("all");
+  const [isCategoryExplorePanelOpen, setIsCategoryExplorePanelOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedLocationGroup, setSelectedLocationGroup] = useState(null);
@@ -215,19 +215,15 @@ export default function MapHomePage() {
     return filterEvents(events, selectedCategory, eventSearchQuery, filters);
   }, [events, selectedCategory, eventSearchQuery, filters]);
 
-  const musicGenreFilteredEvents = useMemo(() => {
-    if (selectedCategory !== "music") {
-      return filteredEvents;
-    }
-
+  const subcategoryFilteredEvents = useMemo(() => {
     return filteredEvents.filter((event) =>
-      matchesMusicGenre(event, selectedMusicGenre)
+      matchesEventSubcategory(event, selectedCategory, selectedSubcategory)
     );
-  }, [filteredEvents, selectedCategory, selectedMusicGenre]);
+  }, [filteredEvents, selectedCategory, selectedSubcategory]);
 
   const displayedEvents = useMemo(() => {
-    return addDistanceFromPoint(musicGenreFilteredEvents, destinationLocation);
-  }, [musicGenreFilteredEvents, destinationLocation]);
+    return addDistanceFromPoint(subcategoryFilteredEvents, destinationLocation);
+  }, [subcategoryFilteredEvents, destinationLocation]);
 
   const sidebarEvents = selectedLocationGroup?.events ?? displayedEvents;
 
@@ -249,7 +245,7 @@ export default function MapHomePage() {
     setSelectedLocationGroup(null);
     setNearestEvent(null);
     setNearestError("");
-  }, [selectedCategory, selectedMusicGenre, query, filters]);
+  }, [selectedCategory, selectedSubcategory, query, filters]);
 
   useEffect(() => {
     if (sidebarEvents.length === 0) {
@@ -276,21 +272,21 @@ export default function MapHomePage() {
   }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
 
   function handleSelectCategory(categoryId) {
-    if (categoryId === "music") {
-      setSelectedCategory("music");
-      setIsMusicGenrePanelOpen((isOpen) =>
-        selectedCategory === "music" ? !isOpen : true
-      );
+    setSelectedCategory(categoryId);
+    setSelectedSubcategory("all");
+
+    if (!categoryHasExplorePanel(categoryId)) {
+      setIsCategoryExplorePanelOpen(false);
       return;
     }
 
-    setSelectedCategory(categoryId);
-    setSelectedMusicGenre("all");
-    setIsMusicGenrePanelOpen(false);
+    setIsCategoryExplorePanelOpen((isOpen) =>
+      selectedCategory === categoryId ? !isOpen : true
+    );
   }
 
-  function handleSelectMusicGenre(genreId) {
-    setSelectedMusicGenre(genreId);
+  function handleSelectSubcategory(genreId) {
+    setSelectedSubcategory(genreId);
     setSelectedLocationGroup(null);
     setNearestEvent(null);
     setNearestError("");
@@ -423,7 +419,7 @@ export default function MapHomePage() {
       }
 
       const eventsWithDistance = addDistanceFromPoint(
-        musicGenreFilteredEvents,
+        subcategoryFilteredEvents,
         location
       ).filter((event) => Number.isFinite(event.distanceKm));
 
@@ -492,23 +488,23 @@ export default function MapHomePage() {
   const activeFilterSummary = getActiveFilterSummary(filters);
 
   useEffect(() => {
-    if (!isMusicGenrePanelOpen) {
+    if (!isCategoryExplorePanelOpen) {
       return;
     }
 
-    function isInsideMusicGenreUi(target) {
+    function isInsideCategoryExploreUi(target) {
       return Boolean(
         target instanceof Element &&
-          target.closest("[data-music-genre-panel], [data-music-category-toggle]")
+          target.closest("[data-category-explore-panel], [data-category-explore-toggle]")
       );
     }
 
     function handlePointerDown(event) {
-      if (isInsideMusicGenreUi(event.target)) {
+      if (isInsideCategoryExploreUi(event.target)) {
         return;
       }
 
-      setIsMusicGenrePanelOpen(false);
+      setIsCategoryExplorePanelOpen(false);
     }
 
     document.addEventListener("pointerdown", handlePointerDown, true);
@@ -516,7 +512,7 @@ export default function MapHomePage() {
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  }, [isMusicGenrePanelOpen]);
+  }, [isCategoryExplorePanelOpen]);
 
   useEffect(() => {
     if (!isFilterOpen) {
@@ -691,17 +687,18 @@ export default function MapHomePage() {
             activeFilterSummary={activeFilterSummary}
           />
 
-          <div data-music-category-toggle="true">
+          <div data-category-explore-toggle="true">
             <CategoryChips
               selectedCategory={selectedCategory}
               onSelectCategory={handleSelectCategory}
             />
           </div>
 
-          {selectedCategory === "music" && isMusicGenrePanelOpen && (
-            <MusicGenreChips
-              selectedGenre={selectedMusicGenre}
-              onSelectGenre={handleSelectMusicGenre}
+          {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
+            <CategoryExplorePanel
+              selectedCategory={selectedCategory}
+              selectedSubcategory={selectedSubcategory}
+              onSelectSubcategory={handleSelectSubcategory}
               avoidLeftPanel={isEventListPanelOpen}
             />
           )}
