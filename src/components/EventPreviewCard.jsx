@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
 import { inferEventSubcategories } from "../utils/categoryTaxonomyUtils";
@@ -8,8 +8,47 @@ import {
   IconShare,
 } from "./Icons";
 
-export default function EventPreviewCard({ event }) {
+function getSavedEventsStorageKey(authSession) {
+  const userId = authSession?.user?.id || "guest";
+  return `vancouver-event-map:saved-events:${userId}`;
+}
+
+function readSavedEventIds(authSession) {
+  try {
+    const rawValue = window.localStorage.getItem(
+      getSavedEventsStorageKey(authSession)
+    );
+
+    const parsedValue = JSON.parse(rawValue || "[]");
+
+    return Array.isArray(parsedValue) ? parsedValue.map(String) : [];
+  } catch (error) {
+    console.error("Could not read saved events:", error);
+    return [];
+  }
+}
+
+function writeSavedEventIds(authSession, eventIds) {
+  window.localStorage.setItem(
+    getSavedEventsStorageKey(authSession),
+    JSON.stringify([...new Set(eventIds.map(String))])
+  );
+}
+
+export default function EventPreviewCard({ event, authSession }) {
   const [shareMessage, setShareMessage] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    if (!event?.id) {
+      setIsSaved(false);
+      return;
+    }
+
+    const savedEventIds = readSavedEventIds(authSession);
+    setIsSaved(savedEventIds.includes(String(event.id)));
+  }, [event?.id, authSession?.user?.id]);
 
   if (!event) return null;
 
@@ -51,6 +90,44 @@ ${event.price}`;
         setShareMessage("");
       }, 1800);
     }
+  }
+
+  function handleToggleSaveEvent() {
+    if (!authSession?.user) {
+      setSaveMessage("Please log in to save events.");
+
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 700);
+
+      return;
+    }
+
+    const eventId = String(event.id);
+    const savedEventIds = readSavedEventIds(authSession);
+
+    if (savedEventIds.includes(eventId)) {
+      writeSavedEventIds(
+        authSession,
+        savedEventIds.filter((savedEventId) => savedEventId !== eventId)
+      );
+
+      window.dispatchEvent(new Event("saved-events-updated"));
+
+      setIsSaved(false);
+      setSaveMessage("Removed from saved events.");
+    } else {
+      writeSavedEventIds(authSession, [...savedEventIds, eventId]);
+
+      window.dispatchEvent(new Event("saved-events-updated"));
+
+      setIsSaved(true);
+      setSaveMessage("Saved!");
+    }
+
+    setTimeout(() => {
+      setSaveMessage("");
+    }, 1800);
   }
 
   function handleAddToCalendar() {
@@ -132,10 +209,18 @@ ${event.price}`;
 
         <button
           type="button"
-          className="rounded-full border border-slate-200 p-2 transition hover:bg-slate-50"
-          aria-label="Save event"
+          onClick={handleToggleSaveEvent}
+          className={`rounded-full border p-2 transition ${
+            isSaved
+              ? "border-pink-200 bg-pink-50 text-pink-600 hover:bg-pink-100"
+              : "border-slate-200 text-slate-700 hover:bg-slate-50"
+          }`}
+          aria-label={isSaved ? "Remove saved event" : "Save event"}
+          title={isSaved ? "Remove saved event" : "Save event"}
         >
-          <IconBookmark className="h-5 w-5" />
+          <IconBookmark
+            className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`}
+          />
         </button>
       </div>
 
@@ -181,9 +266,15 @@ ${event.price}`;
         </div>
       </div>
 
-      {shareMessage && (
-        <p className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-center text-xs font-semibold text-rose-700">
-          {shareMessage}
+      {(shareMessage || saveMessage) && (
+        <p
+          className={`mt-3 rounded-2xl px-3 py-2 text-center text-xs font-semibold ${
+            saveMessage
+              ? "bg-pink-50 text-pink-700"
+              : "bg-rose-50 text-rose-700"
+          }`}
+        >
+          {saveMessage || shareMessage}
         </p>
       )}
 
