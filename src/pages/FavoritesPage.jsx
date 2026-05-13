@@ -145,8 +145,8 @@ export default function FavoritesPage() {
   }, [filteredSavedEvents, selectedEvent?.id]);
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900">
-      <div className="mx-auto max-w-6xl">
+    <main className="h-screen overflow-hidden bg-slate-100 px-4 py-6 text-slate-900">
+      <div className="mx-auto flex h-full max-w-6xl flex-col">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <a
@@ -217,8 +217,8 @@ export default function FavoritesPage() {
         )}
 
         {!isLoading && !pageError && savedEvents.length > 0 && (
-          <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
-            <section className="rounded-[2rem] border border-white/80 bg-white/90 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
+          <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[420px_1fr]">
+            <section className="flex min-h-0 flex-col rounded-[2rem] border border-white/80 bg-white/90 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-lg font-black">Saved events</h2>
                 <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-bold text-pink-600">
@@ -231,7 +231,7 @@ export default function FavoritesPage() {
                   No saved events match your search.
                 </p>
               ) : (
-                <div className="no-scrollbar max-h-[calc(100vh-15rem)] space-y-3 overflow-y-auto pr-1">
+                <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                   {filteredSavedEvents.map((event) => (
                     <EventCard
                       key={event.id}
@@ -244,9 +244,9 @@ export default function FavoritesPage() {
               )}
             </section>
 
-            <section className="relative min-h-[520px] rounded-[2rem] border border-white/80 bg-white/60 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
+            <section className="sticky top-6 min-h-0 overflow-hidden rounded-[2rem] border border-white/80 bg-white/60 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
               {selectedEvent ? (
-                <div className="relative min-h-[520px]">
+                <div className="relative h-full min-h-0">
                   <EventPreviewCard
                     event={selectedEvent}
                     authSession={authSession}
@@ -254,7 +254,7 @@ export default function FavoritesPage() {
                   />
                 </div>
               ) : (
-                <div className="flex min-h-[520px] items-center justify-center text-center">
+                <div className="flex h-full min-h-0 items-center justify-center text-center">
                   <div>
                     <p className="text-lg font-black text-slate-900">
                       Select an event

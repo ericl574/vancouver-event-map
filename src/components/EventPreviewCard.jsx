@@ -73,8 +73,8 @@ export default function EventPreviewCard({
   const eventUrl = getEventUrl(event);
 
   const sectionClassName = isDetailVariant
-    ? "relative h-full w-full overflow-hidden rounded-[2rem] bg-white p-6 shadow-2xl shadow-slate-900/10"
-    : "absolute inset-x-0 bottom-0 z-40 rounded-t-3xl bg-white p-4 shadow-2xl lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
+    ? "relative h-full w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl shadow-slate-900/10"
+    : "absolute inset-x-0 bottom-0 z-40 max-h-[72vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
 
   const descriptionClassName = isDetailVariant
     ? "mt-4 text-sm leading-6 text-slate-600"
@@ -360,7 +360,11 @@ ${event.price}`;
       </div>
 
       {isDetailsOpen && (
-        <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+        <div
+          className={`mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 ${
+            isDetailVariant ? "p-4" : "p-3"
+          }`}
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
               Event details
