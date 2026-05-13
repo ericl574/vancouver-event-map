@@ -250,6 +250,7 @@ export default function FavoritesPage() {
                   <EventPreviewCard
                     event={selectedEvent}
                     authSession={authSession}
+                    variant="detail"
                   />
                 </div>
               ) : (
