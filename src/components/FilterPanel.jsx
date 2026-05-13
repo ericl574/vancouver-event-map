@@ -53,15 +53,27 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
     onChange({
       ...filters,
       timeRange,
-      exactDate: "",
+      startDate: "",
+      endDate: "",
     });
   }
 
-  function updateExactDate(exactDate) {
+  function updateDateRange(field, value) {
     onChange({
       ...filters,
       timeRange: "all",
-      exactDate,
+      [field]: value,
+    });
+  }
+
+  const hasCustomDateRange = Boolean(filters.startDate || filters.endDate);
+
+  function resetToDefaultFilters() {
+    onChange({
+      ...filters,
+      timeRange: "30d",
+      startDate: "",
+      endDate: "",
     });
   }
 
@@ -79,21 +91,19 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
             </p>
           </div>
 
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-slate-200 hover:text-slate-800"
-            >
-              Close
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={resetToDefaultFilters}
+            className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-pink-50 hover:text-pink-600"
+          >
+            Reset default
+          </button>
         </div>
 
         <div className="no-scrollbar min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden pb-3 pr-1">
           <div
             className={`rounded-2xl border p-4 ${
-              filters.exactDate
+              hasCustomDateRange
                 ? "border-pink-300 bg-pink-50"
                 : "border-slate-200 bg-slate-50/70"
             }`}
@@ -101,26 +111,50 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
             <div className="mb-3">
               <h3
                 className={`text-sm font-bold ${
-                  filters.exactDate ? "text-pink-700" : "text-slate-900"
+                  hasCustomDateRange ? "text-pink-700" : "text-slate-900"
                 }`}
               >
-                Exact date
+                Custom date range
               </h3>
               <p
                 className={`text-xs ${
-                  filters.exactDate ? "text-pink-500" : "text-slate-500"
+                  hasCustomDateRange ? "text-pink-500" : "text-slate-500"
                 }`}
               >
-                Show events happening on one specific day
+                Show events between selected dates
               </p>
             </div>
 
-            <input
-              type="date"
-              value={filters.exactDate || ""}
-              onChange={(event) => updateExactDate(event.target.value)}
-              className="block w-full min-w-0 max-w-full box-border rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
-            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  Start date
+                </span>
+                <input
+                  type="date"
+                  value={filters.startDate || ""}
+                  onChange={(event) =>
+                    updateDateRange("startDate", event.target.value)
+                  }
+                  className="block w-full min-w-0 max-w-full box-border rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  End date
+                </span>
+                <input
+                  type="date"
+                  value={filters.endDate || ""}
+                  min={filters.startDate || undefined}
+                  onChange={(event) =>
+                    updateDateRange("endDate", event.target.value)
+                  }
+                  className="block w-full min-w-0 max-w-full box-border rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+                />
+              </label>
+            </div>
           </div>
 
           <div>
@@ -129,7 +163,7 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
                 Quick time range
               </h3>
 
-              {(filters.timeRange !== "all" || filters.exactDate) && (
+              {(filters.timeRange !== "all" || hasCustomDateRange) && (
                 <span className="rounded-full bg-pink-50 px-2 py-1 text-xs font-semibold text-pink-600">
                   Active
                 </span>
@@ -139,7 +173,7 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
             <div className="grid gap-2">
               {TIME_RANGE_OPTIONS.map((option) => {
                 const isSelected =
-                  filters.timeRange === option.id && !filters.exactDate;
+                  filters.timeRange === option.id && !hasCustomDateRange;
 
                 return (
                   <button

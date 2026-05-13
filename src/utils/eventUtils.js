@@ -62,12 +62,26 @@ function getTimeRangeLimit(timeRange) {
   return null;
 }
 
-function matchesExactDate(event, exactDate) {
-  if (!exactDate) {
+function matchesDateRange(event, startDate, endDate) {
+  if (!startDate && !endDate) {
     return true;
   }
 
-  return getEventDateString(event) === exactDate;
+  const eventDate = getEventDateString(event);
+
+  if (!eventDate) {
+    return false;
+  }
+
+  if (startDate && eventDate < startDate) {
+    return false;
+  }
+
+  if (endDate && eventDate > endDate) {
+    return false;
+  }
+
+  return true;
 }
 
 function matchesTimeRange(event, timeRange) {
@@ -134,12 +148,16 @@ export function filterEvents(events, selectedCategory, query, filters = {}) {
 
     const matchesStatus = !event.status || event.status === "approved";
 
-    const matchesDate = matchesExactDate(event, filters.exactDate);
+    const hasCustomDateRange = Boolean(filters.startDate || filters.endDate);
+    const matchesDate = matchesDateRange(
+      event,
+      filters.startDate,
+      filters.endDate
+    );
 
-    const matchesTime = filters.exactDate
+    const matchesTime = hasCustomDateRange
       ? true
       : matchesTimeRange(event, filters.timeRange);
-
     return (
       matchesCategory &&
       matchesQuery &&

@@ -54,10 +54,24 @@ const TIME_FILTER_SUMMARIES = {
 };
 
 function getActiveFilterSummary(filters) {
-  if (filters.exactDate) {
+  if (filters.startDate || filters.endDate) {
+    if (filters.startDate && filters.endDate) {
+      return {
+        label: "Custom range",
+        description: `${filters.startDate} to ${filters.endDate}`,
+      };
+    }
+
+    if (filters.startDate) {
+      return {
+        label: "From date",
+        description: `Events from ${filters.startDate}`,
+      };
+    }
+
     return {
-      label: "Exact date",
-      description: `Events happening on ${filters.exactDate}`,
+      label: "Until date",
+      description: `Events until ${filters.endDate}`,
     };
   }
 
@@ -101,7 +115,8 @@ export default function MapHomePage() {
   const [isEventListPanelOpen, setIsEventListPanelOpen] = useState(true);
   const [filters, setFilters] = useState({
     timeRange: "30d",
-    exactDate: "",
+    startDate: "",
+    endDate: "",
   });
 
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -464,7 +479,8 @@ export default function MapHomePage() {
   function handleResetFilters() {
     setFilters({
       timeRange: "30d",
-      exactDate: "",
+      startDate: "",
+      endDate: "",
     });
 
     setNearestEvent(null);
