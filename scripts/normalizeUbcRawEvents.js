@@ -23,7 +23,7 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SOURCE_NAME = "ubc_events";
-const BATCH_LIMIT = Number(process.env.UBC_NORMALIZE_BATCH_LIMIT || 150);
+const BATCH_LIMIT = Number(process.env.UBC_NORMALIZE_BATCH_LIMIT || 500);
 const AUTO_APPROVE_MAX_DAYS_AHEAD = 180;
 const DRY_RUN = process.argv.includes("--dry-run");
 
