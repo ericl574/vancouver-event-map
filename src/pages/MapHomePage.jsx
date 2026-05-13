@@ -276,13 +276,15 @@ export default function MapHomePage() {
   }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
 
   function handleSelectCategory(categoryId) {
-    setSelectedCategory(categoryId);
-
     if (categoryId === "music") {
-      setIsMusicGenrePanelOpen(true);
+      setSelectedCategory("music");
+      setIsMusicGenrePanelOpen((isOpen) =>
+        selectedCategory === "music" ? !isOpen : true
+      );
       return;
     }
 
+    setSelectedCategory(categoryId);
     setSelectedMusicGenre("all");
     setIsMusicGenrePanelOpen(false);
   }
@@ -700,6 +702,7 @@ export default function MapHomePage() {
             <MusicGenreChips
               selectedGenre={selectedMusicGenre}
               onSelectGenre={handleSelectMusicGenre}
+              avoidLeftPanel={isEventListPanelOpen}
             />
           )}
 
