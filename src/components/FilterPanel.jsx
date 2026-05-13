@@ -69,16 +69,16 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
     <div className="pointer-events-none absolute inset-0 z-[90]">
       <section
         data-filter-panel="true"
-        className="pointer-events-auto absolute bottom-4 left-4 right-4 rounded-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-auto lg:right-8 lg:top-36 lg:w-[380px]"
+          className="pointer-events-auto absolute bottom-4 left-4 right-4 flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-auto lg:right-8 lg:top-36 lg:max-h-[calc(100vh-10.25rem)] lg:w-[380px]"
       >
-        <div className="mb-5">
+          <div className="mb-5 shrink-0">
           <h2 className="text-lg font-bold text-slate-950">Filter events</h2>
           <p className="text-sm text-slate-500">
             Results update instantly on the map
           </p>
         </div>
 
-        <div className="space-y-5">
+          <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pb-3 pr-1">
           <div>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900">

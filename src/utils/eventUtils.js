@@ -72,7 +72,7 @@ function matchesExactDate(event, exactDate) {
 
 function matchesTimeRange(event, timeRange) {
   if (!timeRange || timeRange === "all") {
-    return true;
+    return isUpcomingEvent(event);
   }
 
   const eventStartDate = getEventStartDate(event);
@@ -84,13 +84,20 @@ function matchesTimeRange(event, timeRange) {
   const rangeLimit = getTimeRangeLimit(timeRange);
 
   if (!rangeLimit) {
-    return true;
+    return isUpcomingEvent(event);
   }
 
-  const nowTime = Date.now();
-  const eventTime = eventStartDate.getTime();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  return eventTime >= nowTime && eventTime <= nowTime + rangeLimit;
+  const rangeEnd = new Date(today.getTime() + rangeLimit);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const eventDay = new Date(eventStartDate);
+  eventDay.setHours(0, 0, 0, 0);
+
+  return eventDay >= today && eventDay <= rangeEnd;
 }
 
 function isFreeEvent(event) {

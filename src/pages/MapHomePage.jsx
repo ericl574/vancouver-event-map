@@ -430,7 +430,7 @@ export default function MapHomePage() {
 
   function handleResetFilters() {
     setFilters({
-      timeRange: "all",
+      timeRange: "30d",
       exactDate: "",
     });
 
