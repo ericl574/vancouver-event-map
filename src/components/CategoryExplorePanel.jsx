@@ -6,7 +6,7 @@ function CategoryImageCard({ subcategory, isSelected, onSelect }) {
       type="button"
       onClick={() => onSelect(subcategory.id)}
       aria-pressed={isSelected}
-      className={`group relative min-h-[132px] overflow-hidden rounded-[1.7rem] border text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-xl ${
+      className={`group relative min-h-[112px] overflow-hidden rounded-2xl border text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:min-h-[126px] ${
         isSelected
           ? "border-pink-300 ring-4 ring-pink-100"
           : "border-white/70 hover:border-pink-200"
@@ -92,40 +92,9 @@ export default function CategoryExplorePanel({
   return (
     <section
       data-category-explore-panel="true"
-      className={`mt-3 w-full overflow-hidden rounded-[2rem] border border-pink-100 bg-white/95 p-4 text-slate-900 shadow-2xl shadow-pink-900/10 backdrop-blur-xl transition-all duration-300 sm:p-5 lg:max-w-[calc(100vw-3rem)] ${
-        avoidLeftPanel ? "lg:ml-[230px] lg:max-w-[calc(100vw-32rem)]" : ""
-      }`}
+      className="w-full overflow-hidden border-b border-slate-200 bg-white/95 px-6 py-5 text-slate-900 shadow-xl shadow-slate-900/10 backdrop-blur-xl transition-all duration-300"
     >
-      <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-pink-500">
-            {category.eyebrow}
-          </p>
-          <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
-            {category.title}
-          </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            Pick a popular type or discover more specific event styles.
-          </p>
-        </div>
-
-        {allOption && (
-          <button
-            type="button"
-            onClick={() => onSelectSubcategory("all")}
-            className={`flex shrink-0 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black transition ${
-              selectedSubcategory === "all"
-                ? "border-pink-300 bg-pink-50 text-pink-700"
-                : "border-slate-200 bg-white text-slate-700 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700"
-            }`}
-          >
-            <span>{category.allLabel || allOption.label}</span>
-            <span aria-hidden="true">→</span>
-          </button>
-        )}
-      </div>
-
-      <div className="no-scrollbar max-h-[460px] overflow-y-auto pt-5">
+      <div className="no-scrollbar mx-auto max-h-[min(54vh,500px)] max-w-7xl overflow-y-auto pt-1">
         {popularSubcategories.length > 0 && (
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -134,7 +103,7 @@ export default function CategoryExplorePanel({
               </h3>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {popularSubcategories.map((subcategory) => (
                 <CategoryImageCard
                   key={subcategory.id}
@@ -150,10 +119,8 @@ export default function CategoryExplorePanel({
         {discoverMoreSubcategories.length > 0 && (
           <div className="mt-6 grid gap-4 lg:grid-cols-[180px_1fr]">
             <div>
-              <h3 className="text-2xl font-black leading-none text-slate-950">
-                Discover
-                <br />
-                more
+              <h3 className="text-xl font-black leading-tight text-slate-950">
+                Discover more
               </h3>
               <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
                 Narrow the map by a more specific event type.

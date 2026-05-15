@@ -60,7 +60,7 @@ export default function SearchBar({
         <button
           type="button"
           onClick={onFilterClick}
-          className="hidden max-w-[260px] shrink-0 rounded-2xl border border-pink-300 bg-pink-50 px-4 py-2 text-left transition hover:border-pink-400 hover:bg-pink-100 sm:block"
+          className="hidden max-w-[260px] shrink-0 rounded-2xl border border-pink-300 bg-pink-50 px-4 py-2 text-left transition hover:border-pink-400 hover:bg-pink-100"
           aria-label={`Toggle time filters: ${activeFilterSummary.label}`}
           data-filter-toggle="true"
         >

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import CategoryChips from "../components/CategoryChips";
+import TopNavigation from "../components/TopNavigation";
 import EmptyState from "../components/EmptyState";
 import EventListPanel from "../components/EventListPanel";
 import EventMap from "../components/EventMap";
@@ -630,72 +630,10 @@ export default function MapHomePage() {
       />
 
       <div
-        className="absolute right-4 top-5 z-[60] flex flex-col items-end gap-3"
+        className="absolute right-4 top-24 z-[60] flex flex-col items-end gap-3"
         aria-label="Map quick controls"
       >
         <div className="flex w-full flex-col items-end gap-3">
-          <div className="self-end" aria-label="User account">
-            {authSession?.user ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)}
-                  className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-600 text-lg font-black text-white shadow-xl shadow-purple-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:scale-105"
-                  aria-label="Open account menu"
-                  title={authSession.user.email}
-                >
-                  <span className="drop-shadow-sm">{getUserInitial()}</span>
-                </button>
-
-                {isAccountMenuOpen && (
-                  <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/95 text-slate-800 shadow-2xl shadow-slate-900/20 backdrop-blur">
-                    <div className="border-b border-slate-100 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Signed in as
-                      </p>
-                      <p className="mt-1 truncate text-sm font-semibold">
-                        {authSession.user.email}
-                      </p>
-                    </div>
-
-                    <a
-                      href="/favorites"
-                      className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-pink-50"
-                    >
-                      <div>
-                        <p className="text-sm font-bold text-slate-800">
-                          Favorite List
-                        </p>
-                        <p className="mt-0.5 text-xs font-medium text-slate-500">
-                          Search and manage saved events
-                        </p>
-                      </div>
-
-                      <span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-bold text-pink-600">
-                        {savedEvents.length}
-                      </span>
-                    </a>
-
-                    <button
-                      type="button"
-                      onClick={handleUserSignOut}
-                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
-                    >
-                      Log out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <a
-                href="/login"
-                className="flex h-12 items-center rounded-full bg-slate-950 px-4 text-sm font-bold text-white shadow-xl shadow-slate-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:bg-pink-600"
-              >
-                {isCheckingUserSession ? "Checking..." : "Log in"}
-              </a>
-            )}
-          </div>
-
           <button
             type="button"
             onClick={handleUseCurrentLocation}
@@ -741,23 +679,21 @@ export default function MapHomePage() {
 
       {!isLoadingEvents && displayedEvents.length === 0 && <EmptyState />}
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
-        <div className="pointer-events-auto mx-auto max-w-5xl">
-          <SearchBar
-            query={query}
-            onQueryChange={handleQueryChange}
-            onFilterClick={() => setIsFilterOpen((isOpen) => !isOpen)}
-            onSearchSubmit={handleSearchLocation}
-            isSearchingLocation={isSearchingLocation}
-            activeFilterSummary={activeFilterSummary}
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
+        <div className="pointer-events-auto w-full">
+          <TopNavigation
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleSelectCategory}
+            authSession={authSession}
+            isCheckingUserSession={isCheckingUserSession}
+            isAccountMenuOpen={isAccountMenuOpen}
+            onToggleAccountMenu={() =>
+              setIsAccountMenuOpen((isOpen) => !isOpen)
+            }
+            onSignOut={handleUserSignOut}
+            savedEventsCount={savedEvents.length}
+            userInitial={getUserInitial()}
           />
-
-          <div data-category-explore-toggle="true">
-            <CategoryChips
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleSelectCategory}
-            />
-          </div>
 
           {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
             <CategoryExplorePanel
@@ -767,6 +703,17 @@ export default function MapHomePage() {
               avoidLeftPanel={isEventListPanelOpen}
             />
           )}
+
+          <div className="mx-auto mt-3 w-[min(360px,calc(100vw-2rem))] lg:mx-0 lg:ml-5">
+            <SearchBar
+              query={query}
+              onQueryChange={handleQueryChange}
+              onFilterClick={() => setIsFilterOpen((isOpen) => !isOpen)}
+              onSearchSubmit={handleSearchLocation}
+              isSearchingLocation={isSearchingLocation}
+              activeFilterSummary={activeFilterSummary}
+            />
+          </div>
 
           {(destinationLocation || locationSearchError) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
