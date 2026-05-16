@@ -6,6 +6,12 @@ import { getCategoryById } from "../data/categories";
 
 const GREATER_VANCOUVER_CENTER = [-123.1162, 49.2463];
 
+const INITIAL_MAP_ZOOM = 10.9;
+const USER_LOCATION_ZOOM = 14.6;
+const EVENT_FOCUS_ZOOM = 14.6;
+const MAP_PITCH = 56;
+const MAP_BEARING = -18;
+
 const EVENT_SOURCE_ID = "event-points";
 
 const EVENT_CLUSTER_LAYER_ID = "event-clusters";
@@ -763,10 +769,13 @@ export default function EventMap({
       container: mapContainerRef.current,
       style: "https://tiles.openfreemap.org/styles/liberty",
       center: GREATER_VANCOUVER_CENTER,
-      zoom: 11,
+      zoom: INITIAL_MAP_ZOOM,
       minZoom: 9,
       maxZoom: 18,
+      pitch: MAP_PITCH,
+      bearing: MAP_BEARING,
       attributionControl: false,
+      antialias: true,
     });
 
     mapRef.current = map;
@@ -818,6 +827,8 @@ export default function EventMap({
         map.easeTo({
           center: coordinates,
           zoom: targetZoom,
+          pitch: MAP_PITCH,
+          bearing: MAP_BEARING,
           duration: 650,
         });
       } catch (error) {
@@ -844,6 +855,8 @@ export default function EventMap({
         map.easeTo({
           center: [Number(group.lng), Number(group.lat)],
           zoom: targetZoom,
+          pitch: MAP_PITCH,
+          bearing: MAP_BEARING,
           duration: 550,
         });
 
@@ -1001,7 +1014,9 @@ export default function EventMap({
 
     map.flyTo({
       center: [lng, lat],
-      zoom: 15,
+      zoom: EVENT_FOCUS_ZOOM,
+      pitch: MAP_PITCH,
+      bearing: MAP_BEARING,
       speed: 1.4,
       curve: 1.2,
       essential: true,
@@ -1039,7 +1054,9 @@ export default function EventMap({
 
     map.flyTo({
       center: [lng, lat],
-      zoom: 14,
+      zoom: USER_LOCATION_ZOOM,
+      pitch: MAP_PITCH,
+      bearing: MAP_BEARING,
       speed: 1.4,
       curve: 1.2,
       essential: true,
@@ -1086,7 +1103,9 @@ export default function EventMap({
 
     map.flyTo({
       center: [lng, lat],
-      zoom: 15,
+      zoom: EVENT_FOCUS_ZOOM,
+      pitch: MAP_PITCH,
+      bearing: MAP_BEARING,
       speed: 1.6,
       curve: 1.15,
       essential: true,

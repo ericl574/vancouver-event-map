@@ -28,42 +28,42 @@ export const categoryTaxonomy = [
       },
       {
         id: "rock",
-        label: "Rock / Alternative",
+        label: "Rock",
         imageUrl:
           "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=360&q=80",
         keywords: ["rock", "punk", "alternative", "indie rock", "garage"],
       },
       {
         id: "hiphop",
-        label: "Hip-Hop / Rap",
+        label: "Hip-Hop",
         imageUrl:
           "https://images.unsplash.com/photo-1507874457470-272b3c8d8ee2?auto=format&fit=crop&w=320&q=80",
         keywords: ["hip-hop", "hip hop", "rap", "rapper", "r&b", "rnb", "trap"],
       },
       {
         id: "electronic",
-        label: "Dance / Electronic",
+        label: "Electronic",
         imageUrl:
           "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=240&q=80",
         keywords: ["electronic", "edm", "dj", "dance", "techno", "house", "rave", "club"],
       },
       {
         id: "classical",
-        label: "Classical / Orchestra",
+        label: "Classical",
         imageUrl:
           "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=240&q=80",
         keywords: ["classical", "symphony", "orchestra", "opera", "chamber", "piano recital"],
       },
       {
         id: "jazz",
-        label: "Jazz / Blues",
+        label: "Jazz",
         imageUrl:
           "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=240&q=80",
         keywords: ["jazz", "blues", "swing", "improv"],
       },
       {
         id: "country",
-        label: "Country / Folk",
+        label: "Country",
         imageUrl:
           "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=240&q=80",
         keywords: ["country", "folk", "americana", "bluegrass"],
@@ -77,7 +77,7 @@ export const categoryTaxonomy = [
       },
       {
         id: "indie",
-        label: "Indie / Local",
+        label: "Indie",
         imageUrl:
           "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=240&q=80",
         keywords: ["indie", "alternative", "singer-songwriter", "songwriter", "local"],

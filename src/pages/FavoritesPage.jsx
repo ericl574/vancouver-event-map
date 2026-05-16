@@ -89,20 +89,6 @@ export default function FavoritesPage() {
     };
   }, []);
 
-  useEffect(() => {
-    function refreshSavedEvents() {
-      setSavedEventIds(readSavedEventIds(authSession));
-    }
-
-    window.addEventListener("saved-events-updated", refreshSavedEvents);
-    window.addEventListener("storage", refreshSavedEvents);
-
-    return () => {
-      window.removeEventListener("saved-events-updated", refreshSavedEvents);
-      window.removeEventListener("storage", refreshSavedEvents);
-    };
-  }, [authSession?.user?.id]);
-
   const savedEvents = useMemo(() => {
     const savedIdSet = new Set(savedEventIds.map(String));
 

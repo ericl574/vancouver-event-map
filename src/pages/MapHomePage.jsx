@@ -163,6 +163,36 @@ export default function MapHomePage() {
   useEffect(() => {
     let isMounted = true;
 
+    async function locateUserOnFirstLoad() {
+      try {
+        setIsLocating(true);
+
+        const location = await getCurrentPositionAsync();
+
+        if (!isMounted) return;
+
+        setUserLocation(location);
+      } catch (error) {
+        // Quiet fallback: if the user denies location or the browser cannot locate them,
+        // EventMap keeps the default Greater Vancouver 3D camera.
+        console.info("Using default Greater Vancouver map center:", error);
+      } finally {
+        if (isMounted) {
+          setIsLocating(false);
+        }
+      }
+    }
+
+    locateUserOnFirstLoad();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
     async function loadEvents() {
       try {
         setIsLoadingEvents(true);
@@ -630,7 +660,11 @@ export default function MapHomePage() {
       />
 
       <div
-        className="absolute right-4 top-24 z-[60] flex flex-col items-end gap-3"
+        className={`absolute right-4 top-24 z-[20] flex flex-col items-end gap-3 transition duration-200 ${
+          isAccountMenuOpen || isCategoryExplorePanelOpen
+            ? "pointer-events-none opacity-0"
+            : "opacity-100"
+        }`}
         aria-label="Map quick controls"
       >
         <div className="flex w-full flex-col items-end gap-3">
@@ -680,7 +714,7 @@ export default function MapHomePage() {
       {!isLoadingEvents && displayedEvents.length === 0 && <EmptyState />}
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
-        <div className="pointer-events-auto w-full">
+        <div className="pointer-events-auto relative w-full">
           <TopNavigation
             selectedCategory={selectedCategory}
             onSelectCategory={handleSelectCategory}
@@ -696,12 +730,14 @@ export default function MapHomePage() {
           />
 
           {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
-            <CategoryExplorePanel
-              selectedCategory={selectedCategory}
-              selectedSubcategory={selectedSubcategory}
-              onSelectSubcategory={handleSelectSubcategory}
-              avoidLeftPanel={isEventListPanelOpen}
-            />
+            <div className="absolute left-0 right-0 top-16 z-40">
+              <CategoryExplorePanel
+                selectedCategory={selectedCategory}
+                selectedSubcategory={selectedSubcategory}
+                onSelectSubcategory={handleSelectSubcategory}
+                avoidLeftPanel={isEventListPanelOpen}
+              />
+            </div>
           )}
 
           <div className="mx-auto mt-3 w-[min(360px,calc(100vw-2rem))] lg:mx-0 lg:ml-5">

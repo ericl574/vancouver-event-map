@@ -369,9 +369,7 @@ ${event.price}`;
             <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
               Event details
             </h3>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-600 ring-1 ring-pink-100">
-              {event.status || "approved"}
-            </span>
+
           </div>
 
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -449,31 +447,6 @@ ${event.price}`;
             </div>
           )}
 
-          {(event.ticketUrl || event.sourceUrl) && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {event.ticketUrl && (
-                <a
-                  href={event.ticketUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white transition hover:bg-pink-600"
-                >
-                  Open ticket page
-                </a>
-              )}
-
-              {event.sourceUrl && (
-                <a
-                  href={event.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
-                >
-                  View source
-                </a>
-              )}
-            </div>
-          )}
         </div>
       )}
 
