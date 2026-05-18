@@ -9,7 +9,17 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "import:ticketmaster": "node --env-file=.env.local scripts/importTicketmasterEvents.js",
-    "normalize:ticketmaster": "node --env-file=.env.local scripts/normalizeTicketmasterRawEvents.js"
+    "normalize:ticketmaster": "node --env-file=.env.local scripts/normalizeTicketmasterRawEvents.js",
+    "cleanup:events": "node --env-file=.env.local scripts/cleanupExpiredEvents.js",
+    "cleanup:events:dry": "node --env-file=.env.local scripts/cleanupExpiredEvents.js --dry-run",
+    "import:ubc": "node --env-file=.env.local scripts/importUbcEvents.js",
+    "import:ubc:dry": "node --env-file=.env.local scripts/importUbcEvents.js --dry-run",
+    "normalize:ubc": "node --env-file=.env.local scripts/normalizeUbcRawEvents.js",
+    "normalize:ubc:dry": "node --env-file=.env.local scripts/normalizeUbcRawEvents.js --dry-run",
+    "import:blueprint": "node --env-file=.env.local scripts/importBlueprintEvents.js",
+    "import:blueprint:dry": "node --env-file=.env.local scripts/importBlueprintEvents.js --dry-run",
+    "normalize:blueprint": "node --env-file=.env.local scripts/normalizeBlueprintRawEvents.js",
+    "normalize:blueprint:dry": "node --env-file=.env.local scripts/normalizeBlueprintRawEvents.js --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

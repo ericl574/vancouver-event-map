@@ -2,8 +2,13 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
+
 import { createClient } from "@supabase/supabase-js";
 import { findBestEventMatch } from "./lib/eventDedupe.js";
+import {
+  getVenueCoordinates,
+  isUnsupportedMapVenue,
+} from "./lib/venueCoordinates.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 
@@ -17,9 +22,10 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const SOURCE_NAME = "ticketmaster";
-const BATCH_LIMIT = Number(process.env.TICKETMASTER_NORMALIZE_BATCH_LIMIT || 500);
-const AUTO_APPROVE_MAX_DAYS_AHEAD = 365;
+const SOURCE_NAME = "ubc_events";
+const BATCH_LIMIT = Number(process.env.UBC_NORMALIZE_BATCH_LIMIT || 500);
+const AUTO_APPROVE_MAX_DAYS_AHEAD = 180;
+const DRY_RUN = process.argv.includes("--dry-run");
 
 const GREATER_VANCOUVER_BOUNDS = {
   minLat: 49.0,
@@ -28,26 +34,21 @@ const GREATER_VANCOUVER_BOUNDS = {
   maxLng: -122.45,
 };
 
-function getPrimaryVenue(rawJson) {
-  return rawJson?._embedded?.venues?.[0] || null;
-}
-
 function cleanText(value) {
   if (!value) return "";
 
   return String(value)
+    .replace(/&amp;/g, "&")
+    .replace(/&#038;/g, "&")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8212;/g, "—")
+    .replace(/&#8217;/g, "'")
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&nbsp;/g, " ")
+    .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function parseNumber(value) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const number = Number(value);
-
-  return Number.isFinite(number) ? number : null;
 }
 
 function isInsideGreaterVancouver(lat, lng) {
@@ -59,6 +60,191 @@ function isInsideGreaterVancouver(lat, lng) {
     lng >= GREATER_VANCOUVER_BOUNDS.minLng &&
     lng <= GREATER_VANCOUVER_BOUNDS.maxLng
   );
+}
+
+function splitDateTime(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return {
+      date: null,
+      time: null,
+    };
+  }
+
+  const [date, time] = text.split(" ");
+
+  return {
+    date: date || null,
+    time: time || null,
+  };
+}
+
+function getKeywordText(rawEvent) {
+  const rawJson = rawEvent.raw_json || {};
+
+  return [
+    rawEvent.raw_title,
+    rawEvent.raw_description,
+    rawEvent.raw_location_text,
+    ...(rawJson.categories || []),
+    ...(rawJson.organizers || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function isFreeEvent(rawEvent) {
+  const text = `${rawEvent.raw_price_text || ""} ${getKeywordText(rawEvent)}`.toLowerCase();
+
+  return text.includes("free");
+}
+
+function inferCategory(rawEvent) {
+  const text = getKeywordText(rawEvent);
+
+  if (
+    text.includes("career") ||
+    text.includes("job") ||
+    text.includes("networking") ||
+    text.includes("professional development") ||
+    text.includes("conference") ||
+    text.includes("symposium")
+  ) {
+    return "career";
+  }
+
+  if (
+    text.includes("workshop") ||
+    text.includes("course") ||
+    text.includes("training") ||
+    text.includes("clinic")
+  ) {
+    return "workshop";
+  }
+
+  if (
+    text.includes("gallery") ||
+    text.includes("exhibit") ||
+    text.includes("arts") ||
+    text.includes("film") ||
+    text.includes("music") ||
+    text.includes("auditorium")
+  ) {
+    return "art";
+  }
+
+  if (
+    text.includes("farm") ||
+    text.includes("food") ||
+    text.includes("cooking") ||
+    text.includes("dumpling") ||
+    text.includes("edibles")
+  ) {
+    return "food";
+  }
+
+  if (isFreeEvent(rawEvent)) {
+    return "free";
+  }
+
+  return "student";
+}
+
+function getPriceText(rawEvent) {
+  if (isFreeEvent(rawEvent)) {
+    return "Free";
+  }
+
+  return cleanText(rawEvent.raw_price_text) || "Check event page";
+}
+
+function getTags(rawEvent) {
+  const rawJson = rawEvent.raw_json || {};
+
+  return [
+    SOURCE_NAME,
+    ...(rawJson.categories || []),
+    ...(rawJson.organizers || []),
+  ]
+    .map(cleanText)
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function mapRawEventToEvent(rawEvent) {
+  const rawJson = rawEvent.raw_json || {};
+  const venue = rawJson.venue || null;
+  const unsupportedVenueReason = isUnsupportedMapVenue(venue);
+
+  if (unsupportedVenueReason) {
+    return {
+      event: null,
+      issue: unsupportedVenueReason,
+    };
+  }
+
+  const coordinates = getVenueCoordinates(venue);
+
+  if (!coordinates) {
+    return {
+      event: null,
+      issue: `Unsupported UBC venue: ${cleanText(venue?.venue) || "unknown"}`,
+    };
+  }
+
+  const start = splitDateTime(rawJson.start_date || rawEvent.raw_date_text);
+  const end = splitDateTime(rawJson.end_date);
+  const category = inferCategory(rawEvent);
+  const address = cleanText(venue?.address);
+  const city = cleanText(venue?.city) || "Vancouver";
+
+  return {
+    event: {
+      title: cleanText(rawEvent.raw_title) || "Untitled UBC event",
+      category,
+      venue: cleanText(venue?.venue),
+      address,
+      area: city,
+      city,
+      lat: coordinates.lat,
+      lng: coordinates.lng,
+      event_date: start.date,
+      start_time: start.time,
+      end_time: end.time,
+      price: getPriceText(rawEvent),
+      is_free: isFreeEvent(rawEvent),
+      description: cleanText(rawEvent.raw_description),
+      image_url: rawEvent.raw_image_url || rawJson.image_url || null,
+      ticket_url: rawEvent.raw_ticket_url || rawJson.website || rawEvent.source_url,
+      source_url: rawEvent.source_url || rawJson.url,
+      organizer_name: (rawJson.organizers || []).map(cleanText).filter(Boolean).join(", "),
+      tags: getTags(rawEvent),
+      status: "pending",
+    },
+    issue: null,
+  };
+}
+
+function validateEvent(event) {
+  if (!event.title) {
+    return "Missing title";
+  }
+
+  if (!event.event_date) {
+    return "Missing event date";
+  }
+
+  if (!event.lat || !event.lng) {
+    return "Missing latitude or longitude";
+  }
+
+  if (!event.source_url) {
+    return "Missing source URL";
+  }
+
+  return null;
 }
 
 function getAutoApprovalIssue(event) {
@@ -107,248 +293,9 @@ function getAutoApprovalIssue(event) {
   return null;
 }
 
-function getTicketmasterClassifications(rawJson) {
-  const classification = rawJson?.classifications?.[0] || {};
-
-  return {
-    segment: classification.segment?.name || "",
-    genre: classification.genre?.name || "",
-    subGenre: classification.subGenre?.name || "",
-    type: classification.type?.name || "",
-    subType: classification.subType?.name || "",
-  };
-}
-
-function getKeywordText(rawEvent) {
-  const rawJson = rawEvent.raw_json || {};
-  const classifications = getTicketmasterClassifications(rawJson);
-
-  return [
-    rawEvent.raw_title,
-    rawEvent.raw_description,
-    classifications.segment,
-    classifications.genre,
-    classifications.subGenre,
-    classifications.type,
-    classifications.subType,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
-
-function isFreeEvent(rawEvent) {
-  const rawJson = rawEvent.raw_json || {};
-  const priceText = String(rawEvent.raw_price_text || "").toLowerCase();
-
-  if (priceText.includes("free")) {
-    return true;
-  }
-
-  if (Array.isArray(rawJson.priceRanges)) {
-    return rawJson.priceRanges.some((price) => Number(price.min) === 0);
-  }
-
-  return false;
-}
-
-function inferCategory(rawEvent) {
-  const text = getKeywordText(rawEvent);
-
-
-  if (
-    text.includes("concert") ||
-    text.includes("music") ||
-    text.includes("rock") ||
-    text.includes("pop") ||
-    text.includes("hip-hop") ||
-    text.includes("r&b") ||
-    text.includes("jazz") ||
-    text.includes("classical") ||
-    text.includes("dance/electronic")
-  ) {
-    return "music";
-  }
-
-  if (
-    text.includes("festival") ||
-    text.includes("fair") ||
-    text.includes("celebration")
-  ) {
-    return "festival";
-  }
-
-  if (
-    text.includes("comedy") ||
-    text.includes("comedian") ||
-    text.includes("stand-up") ||
-    text.includes("standup")
-  ) {
-    return "comedy";
-  }
-
-  if (
-    text.includes("art") ||
-    text.includes("exhibition") ||
-    text.includes("museum") ||
-    text.includes("gallery") ||
-    text.includes("theatre") ||
-    text.includes("theater") ||
-    text.includes("arts")
-  ) {
-    return "art";
-  }
-
-  if (
-    text.includes("food") ||
-    text.includes("market") ||
-    text.includes("wine") ||
-    text.includes("beer") ||
-    text.includes("restaurant")
-  ) {
-    return "food";
-  }
-
-  if (
-    text.includes("workshop") ||
-    text.includes("class") ||
-    text.includes("course") ||
-    text.includes("training")
-  ) {
-    return "workshop";
-  }
-
-  if (
-    text.includes("career") ||
-    text.includes("networking") ||
-    text.includes("business") ||
-    text.includes("conference") ||
-    text.includes("expo")
-  ) {
-    return "career";
-  }
-
-  if (
-    text.includes("student") ||
-    text.includes("university") ||
-    text.includes("college") ||
-    text.includes("campus") ||
-    text.includes("ubc") ||
-    text.includes("sfu")
-  ) {
-    return "student";
-  }
-
-  if (
-    text.includes("nightlife") ||
-    text.includes("club") ||
-    text.includes("dj") ||
-    text.includes("party")
-  ) {
-    return "nightlife";
-  }
-
-  return "music";
-}
-
-function getPriceText(rawEvent) {
-  const rawJson = rawEvent.raw_json || {};
-
-  if (isFreeEvent(rawEvent)) {
-    return "Free";
-  }
-
-  if (rawEvent.raw_price_text) {
-    return rawEvent.raw_price_text;
-  }
-
-  if (Array.isArray(rawJson.priceRanges) && rawJson.priceRanges.length > 0) {
-    const price = rawJson.priceRanges[0];
-    const currency = price.currency || "CAD";
-
-    if (price.min != null && price.max != null) {
-      return `${currency} ${price.min}-${price.max}`;
-    }
-
-    if (price.min != null) {
-      return `${currency} ${price.min}+`;
-    }
-  }
-
-  return "Check ticket page";
-}
-
-function getTags(rawEvent) {
-  const rawJson = rawEvent.raw_json || {};
-  const classifications = getTicketmasterClassifications(rawJson);
-
-  return [
-    SOURCE_NAME,
-    classifications.segment,
-    classifications.genre,
-    classifications.subGenre,
-  ]
-    .map(cleanText)
-    .filter(Boolean);
-}
-
-function mapRawEventToEvent(rawEvent) {
-  const rawJson = rawEvent.raw_json || {};
-  const venue = getPrimaryVenue(rawJson);
-  const start = rawJson?.dates?.start || {};
-  const category = inferCategory(rawEvent);
-
-  const latitude = parseNumber(venue?.location?.latitude);
-  const longitude = parseNumber(venue?.location?.longitude);
-
-  return {
-    title: cleanText(rawEvent.raw_title) || "Untitled event",
-    category,
-    venue: cleanText(venue?.name),
-    address: cleanText(venue?.address?.line1),
-    area: cleanText(venue?.city?.name) || "Vancouver",
-    city: cleanText(venue?.city?.name) || "Vancouver",
-    lat: latitude,
-    lng: longitude,
-    event_date: start.localDate || null,
-    start_time: start.localTime || null,
-    end_time: null,
-    price: getPriceText(rawEvent),
-    is_free: isFreeEvent(rawEvent),
-    description:
-      cleanText(rawEvent.raw_description) ||
-      cleanText(rawJson.info) ||
-      cleanText(rawJson.pleaseNote),
-    image_url: rawEvent.raw_image_url || null,
-    ticket_url: rawEvent.raw_ticket_url || rawJson.url || null,
-    source_url: rawEvent.source_url || rawJson.url || null,
-    organizer_name: cleanText(rawJson.promoter?.name),
-    tags: getTags(rawEvent),
-    status: "pending",
-  };
-}
-
-function validateEvent(event) {
-  if (!event.title) {
-    return "Missing title";
-  }
-
-  if (!event.event_date) {
-    return "Missing event date";
-  }
-
-  if (!event.lat || !event.lng) {
-    return "Missing latitude or longitude";
-  }
-
-  if (!event.source_url) {
-    return "Missing source URL";
-  }
-
-  return null;
-}
-
 async function markRawEventAsError(rawEventId, message) {
+  if (DRY_RUN) return;
+
   const { error } = await supabase
     .from("raw_events")
     .update({
@@ -362,7 +309,25 @@ async function markRawEventAsError(rawEventId, message) {
   }
 }
 
+async function markRawEventAsRejected(rawEventId, message) {
+  if (DRY_RUN) return;
+
+  const { error } = await supabase
+    .from("raw_events")
+    .update({
+      import_status: "rejected",
+      error_message: message,
+    })
+    .eq("id", rawEventId);
+
+  if (error) {
+    console.error(`Failed to mark raw event ${rawEventId} as rejected:`, error);
+  }
+}
+
 async function markRawEventAsNormalized(rawEventId, eventId) {
+  if (DRY_RUN) return;
+
   const { error } = await supabase
     .from("raw_events")
     .update({
@@ -379,19 +344,40 @@ async function markRawEventAsNormalized(rawEventId, eventId) {
     );
   }
 }
+
 async function updateExistingEvent(eventId, event) {
-  const { error } = await supabase
-    .from("events")
-    .update(event)
-    .eq("id", eventId);
+  if (DRY_RUN) return;
+
+  const { error } = await supabase.from("events").update(event).eq("id", eventId);
 
   if (error) {
     throw error;
   }
 }
 
+async function insertEvent(event) {
+  if (DRY_RUN) {
+    return {
+      id: "dry-run-event-id",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("events")
+    .insert(event)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
 
 async function upsertEventSource(rawEvent, event, eventId) {
+  if (DRY_RUN) return;
+
   const now = new Date().toISOString();
 
   const sourceRow = {
@@ -410,11 +396,9 @@ async function upsertEventSource(rawEvent, event, eventId) {
     updated_at: now,
   };
 
-  const { error } = await supabase
-    .from("event_sources")
-    .upsert(sourceRow, {
-      onConflict: "source_name,source_url",
-    });
+  const { error } = await supabase.from("event_sources").upsert(sourceRow, {
+    onConflict: "source_name,source_url",
+  });
 
   if (error) {
     throw error;
@@ -490,7 +474,7 @@ async function findEventByCrossPlatformUrl(event) {
 
   if (data?.[0]?.event_id) {
     console.log(
-      `Cross-platform URL matched event source: ${event.title} -> ${data[0].source_name}`
+      `Cross-platform URL matched UBC event: ${event.title} -> ${data[0].source_name}`
     );
 
     return { id: data[0].event_id };
@@ -536,7 +520,7 @@ async function findFuzzyEventMatch(event) {
   }
 
   console.log(
-    `Fuzzy matched event: ${event.title} -> ${bestMatch.event.title} (score ${bestMatch.score})`
+    `Fuzzy matched UBC event: ${event.title} -> ${bestMatch.event.title} (score ${bestMatch.score})`
   );
 
   return { id: bestMatch.event.id };
@@ -596,31 +580,41 @@ async function fetchRawEventsToNormalize() {
   return data || [];
 }
 
-async function normalizeTicketmasterRawEvents() {
-  console.log("Starting Ticketmaster normalization...");
+async function normalizeUbcRawEvents() {
+  console.log("Starting UBC Events normalization...");
+  console.log(`Mode: ${DRY_RUN ? "dry run" : "write"}`);
 
   const rawEvents = await fetchRawEventsToNormalize();
 
   if (rawEvents.length === 0) {
-    console.log("No new Ticketmaster raw events to normalize.");
+    console.log("No new UBC raw events to normalize.");
     return;
   }
 
-  console.log(`Found ${rawEvents.length} raw events to normalize.`);
+  console.log(`Found ${rawEvents.length} UBC raw events to normalize.`);
 
   let normalizedCount = 0;
   let linkedExistingCount = 0;
+  let skippedCount = 0;
   let errorCount = 0;
 
   for (const rawEvent of rawEvents) {
     try {
-      const event = mapRawEventToEvent(rawEvent);
+      const { event, issue } = mapRawEventToEvent(rawEvent);
+
+      if (issue) {
+        skippedCount += 1;
+        await markRawEventAsRejected(rawEvent.id, issue);
+        console.log(`Rejected UBC raw event ${rawEvent.id}: ${issue}`);
+        continue;
+      }
+
       const validationError = validateEvent(event);
 
       if (validationError) {
         errorCount += 1;
         await markRawEventAsError(rawEvent.id, validationError);
-        console.log(`Skipped raw event ${rawEvent.id}: ${validationError}`);
+        console.log(`Skipped UBC raw event ${rawEvent.id}: ${validationError}`);
         continue;
       }
 
@@ -638,44 +632,36 @@ async function normalizeTicketmasterRawEvents() {
         await updateExistingEvent(existingEvent.id, event);
         await upsertEventSource(rawEvent, event, existingEvent.id);
         await markRawEventAsNormalized(rawEvent.id, existingEvent.id);
-        console.log(`Updated existing ${event.status} event: ${event.title}`);
+        console.log(`Updated existing ${event.status} UBC event: ${event.title}`);
         continue;
       }
 
-      const { data: insertedEvent, error: insertError } = await supabase
-        .from("events")
-        .insert(event)
-        .select("id")
-        .single();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      await upsertEventSource(rawEvent, event, insertedEvent.id);
-      await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+      const insertedEvent = await insertEvent(event);
 
       normalizedCount += 1;
-      console.log(`Normalized ${event.status}: ${event.title}`);
+      await upsertEventSource(rawEvent, event, insertedEvent.id);
+      await markRawEventAsNormalized(rawEvent.id, insertedEvent.id);
+      console.log(`Normalized ${event.status} UBC event: ${event.title}`);
     } catch (error) {
       errorCount += 1;
 
       const message =
-        error?.message || JSON.stringify(error) || "Unknown normalization error";
+        error?.message || JSON.stringify(error) || "Unknown UBC normalization error";
 
       await markRawEventAsError(rawEvent.id, message);
-      console.error(`Failed raw event ${rawEvent.id}: ${message}`);
+      console.error(`Failed UBC raw event ${rawEvent.id}: ${message}`);
     }
   }
 
-  console.log("Ticketmaster normalization complete.");
+  console.log("UBC Events normalization complete.");
   console.log(`Normalized new events: ${normalizedCount}`);
   console.log(`Updated existing events: ${linkedExistingCount}`);
+  console.log(`Skipped map-ineligible events: ${skippedCount}`);
   console.log(`Errors: ${errorCount}`);
 }
 
-normalizeTicketmasterRawEvents().catch((error) => {
-  console.error("Normalization failed:");
+normalizeUbcRawEvents().catch((error) => {
+  console.error("UBC Events normalization failed:");
   console.error(error);
   process.exit(1);
 });

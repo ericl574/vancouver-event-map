@@ -1,3 +1,5 @@
+import { categoryMatchesEvent } from "./categoryTaxonomyUtils";
+
 function getEventStartDate(event) {
   const eventDate =
     event.event_date ??
@@ -54,21 +56,39 @@ function getTimeRangeLimit(timeRange) {
   if (timeRange === "3d") return 3 * oneDay;
   if (timeRange === "5d") return 5 * oneDay;
   if (timeRange === "1w") return 7 * oneDay;
+  if (timeRange === "30d") return 30 * oneDay;
+  if (timeRange === "3m") return 90 * oneDay;
+  if (timeRange === "6m") return 180 * oneDay;
+  if (timeRange === "1y") return 365 * oneDay;
 
   return null;
 }
 
-function matchesExactDate(event, exactDate) {
-  if (!exactDate) {
+function matchesDateRange(event, startDate, endDate) {
+  if (!startDate && !endDate) {
     return true;
   }
 
-  return getEventDateString(event) === exactDate;
+  const eventDate = getEventDateString(event);
+
+  if (!eventDate) {
+    return false;
+  }
+
+  if (startDate && eventDate < startDate) {
+    return false;
+  }
+
+  if (endDate && eventDate > endDate) {
+    return false;
+  }
+
+  return true;
 }
 
 function matchesTimeRange(event, timeRange) {
   if (!timeRange || timeRange === "all") {
-    return true;
+    return isUpcomingEvent(event);
   }
 
   const eventStartDate = getEventStartDate(event);
@@ -80,29 +100,28 @@ function matchesTimeRange(event, timeRange) {
   const rangeLimit = getTimeRangeLimit(timeRange);
 
   if (!rangeLimit) {
-    return true;
+    return isUpcomingEvent(event);
   }
 
-  const nowTime = Date.now();
-  const eventTime = eventStartDate.getTime();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  return eventTime >= nowTime && eventTime <= nowTime + rangeLimit;
+  const rangeEnd = new Date(today.getTime() + rangeLimit);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const eventDay = new Date(eventStartDate);
+  eventDay.setHours(0, 0, 0, 0);
+
+  return eventDay >= today && eventDay <= rangeEnd;
 }
 
-function isFreeEvent(event) {
-  const price = String(event.price ?? "").toLowerCase();
-
-  return event.is_free === true || event.isFree === true || price === "free";
-}
 
 export function filterEvents(events, selectedCategory, query, filters = {}) {
   const normalizedQuery = query.trim().toLowerCase();
 
   return events.filter((event) => {
-    const matchesCategory =
-      selectedCategory === "all" ||
-      (selectedCategory === "free" && isFreeEvent(event)) ||
-      event.category === selectedCategory;
+    const matchesCategory = categoryMatchesEvent(event, selectedCategory);
 
     const searchable = [
       event.title,
@@ -123,12 +142,16 @@ export function filterEvents(events, selectedCategory, query, filters = {}) {
 
     const matchesStatus = !event.status || event.status === "approved";
 
-    const matchesDate = matchesExactDate(event, filters.exactDate);
+    const hasCustomDateRange = Boolean(filters.startDate || filters.endDate);
+    const matchesDate = matchesDateRange(
+      event,
+      filters.startDate,
+      filters.endDate
+    );
 
-    const matchesTime = filters.exactDate
+    const matchesTime = hasCustomDateRange
       ? true
       : matchesTimeRange(event, filters.timeRange);
-
     return (
       matchesCategory &&
       matchesQuery &&

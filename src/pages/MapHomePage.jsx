@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import CategoryChips from "../components/CategoryChips";
+import TopNavigation from "../components/TopNavigation";
 import EmptyState from "../components/EmptyState";
 import EventListPanel from "../components/EventListPanel";
 import EventMap from "../components/EventMap";
 import EventPreviewCard from "../components/EventPreviewCard";
 import FilterPanel from "../components/FilterPanel";
+import MobileEventListSheet from "../components/MobileEventListSheet";
+import MobileCategoryChips from "../components/MobileCategoryChips";
+import CategoryExplorePanel from "../components/CategoryExplorePanel";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
 import { getCurrentSession, signOutUser } from "../services/authService";
 import { getApprovedEvents } from "../services/eventService";
 import { geocodeAddress } from "../services/geocodingService";
 import { addDistanceFromPoint, filterEvents } from "../utils/eventUtils";
+import { categoryHasExplorePanel, matchesEventSubcategory } from "../utils/categoryTaxonomyUtils";
 
 const TIME_FILTER_SUMMARIES = {
   "24h": {
@@ -29,17 +33,71 @@ const TIME_FILTER_SUMMARIES = {
     label: "Next 1 week",
     description: "Events starting within 7 days",
   },
+  "30d": {
+    label: "Next 30 days",
+    description: "Default map view",
+  },
+  "3m": {
+    label: "Next 3 months",
+    description: "Planning ahead",
+  },
+  "6m": {
+    label: "Next 6 months",
+    description: "Longer-term events",
+  },
+  "1y": {
+    label: "Next year",
+    description: "Events up to 1 year ahead",
+  },
+  all: {
+    label: "All upcoming",
+    description: "Show every stored upcoming event",
+  },
 };
 
 function getActiveFilterSummary(filters) {
-  if (filters.exactDate) {
+  if (filters.startDate || filters.endDate) {
+    if (filters.startDate && filters.endDate) {
+      return {
+        label: "Custom range",
+        description: `${filters.startDate} to ${filters.endDate}`,
+      };
+    }
+
+    if (filters.startDate) {
+      return {
+        label: "From date",
+        description: `Events from ${filters.startDate}`,
+      };
+    }
+
     return {
-      label: "Exact date",
-      description: `Events happening on ${filters.exactDate}`,
+      label: "Until date",
+      description: `Events until ${filters.endDate}`,
     };
   }
 
   return TIME_FILTER_SUMMARIES[filters.timeRange] ?? null;
+}
+
+function getSavedEventsStorageKey(authSession) {
+  const userId = authSession?.user?.id || "guest";
+  return `vancouver-event-map:saved-events:${userId}`;
+}
+
+function readSavedEventIds(authSession) {
+  try {
+    const rawValue = window.localStorage.getItem(
+      getSavedEventsStorageKey(authSession)
+    );
+
+    const parsedValue = JSON.parse(rawValue || "[]");
+
+    return Array.isArray(parsedValue) ? parsedValue.map(String) : [];
+  } catch (error) {
+    console.error("Could not read saved events:", error);
+    return [];
+  }
 }
 
 function getCurrentPositionAsync() {
@@ -69,6 +127,8 @@ function getCurrentPositionAsync() {
 export default function MapHomePage() {
   const [events, setEvents] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("all");
+  const [isCategoryExplorePanelOpen, setIsCategoryExplorePanelOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedLocationGroup, setSelectedLocationGroup] = useState(null);
@@ -76,8 +136,9 @@ export default function MapHomePage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isEventListPanelOpen, setIsEventListPanelOpen] = useState(true);
   const [filters, setFilters] = useState({
-    timeRange: "all",
-    exactDate: "",
+    timeRange: "30d",
+    startDate: "",
+    endDate: "",
   });
 
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -98,7 +159,38 @@ export default function MapHomePage() {
   const [authSession, setAuthSession] = useState(null);
   const [isCheckingUserSession, setIsCheckingUserSession] = useState(true);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [savedEventIds, setSavedEventIds] = useState([]);
   const [authError, setAuthError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function locateUserOnFirstLoad() {
+      try {
+        setIsLocating(true);
+
+        const location = await getCurrentPositionAsync();
+
+        if (!isMounted) return;
+
+        setUserLocation(location);
+      } catch (error) {
+        // Quiet fallback: if the user denies location or the browser cannot locate them,
+        // EventMap keeps the default Greater Vancouver 3D camera.
+        console.info("Using default Greater Vancouver map center:", error);
+      } finally {
+        if (isMounted) {
+          setIsLocating(false);
+        }
+      }
+    }
+
+    locateUserOnFirstLoad();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -170,15 +262,47 @@ export default function MapHomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    function refreshSavedEventIds() {
+      setSavedEventIds(readSavedEventIds(authSession));
+    }
+
+    refreshSavedEventIds();
+
+    window.addEventListener("saved-events-updated", refreshSavedEventIds);
+    window.addEventListener("storage", refreshSavedEventIds);
+
+    return () => {
+      window.removeEventListener("saved-events-updated", refreshSavedEventIds);
+      window.removeEventListener("storage", refreshSavedEventIds);
+    };
+  }, [authSession?.user?.id]);
+
   const eventSearchQuery = destinationLocation ? "" : query;
 
   const filteredEvents = useMemo(() => {
     return filterEvents(events, selectedCategory, eventSearchQuery, filters);
   }, [events, selectedCategory, eventSearchQuery, filters]);
 
+  const subcategoryFilteredEvents = useMemo(() => {
+    return filteredEvents.filter((event) =>
+      matchesEventSubcategory(event, selectedCategory, selectedSubcategory)
+    );
+  }, [filteredEvents, selectedCategory, selectedSubcategory]);
+
   const displayedEvents = useMemo(() => {
-    return addDistanceFromPoint(filteredEvents, destinationLocation);
-  }, [filteredEvents, destinationLocation]);
+    return addDistanceFromPoint(subcategoryFilteredEvents, destinationLocation);
+  }, [subcategoryFilteredEvents, destinationLocation]);
+
+  const savedEvents = useMemo(() => {
+    if (!authSession?.user || savedEventIds.length === 0) {
+      return [];
+    }
+
+    const savedIdSet = new Set(savedEventIds.map(String));
+
+    return events.filter((event) => savedIdSet.has(String(event.id)));
+  }, [authSession?.user, savedEventIds, events]);
 
   const sidebarEvents = selectedLocationGroup?.events ?? displayedEvents;
 
@@ -200,7 +324,7 @@ export default function MapHomePage() {
     setSelectedLocationGroup(null);
     setNearestEvent(null);
     setNearestError("");
-  }, [selectedCategory, query, filters]);
+  }, [selectedCategory, selectedSubcategory, query, filters]);
 
   useEffect(() => {
     if (sidebarEvents.length === 0) {
@@ -225,6 +349,27 @@ export default function MapHomePage() {
 
     setSelectedEvent(null);
   }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
+
+  function handleSelectCategory(categoryId) {
+    setSelectedCategory(categoryId);
+    setSelectedSubcategory("all");
+
+    if (!categoryHasExplorePanel(categoryId)) {
+      setIsCategoryExplorePanelOpen(false);
+      return;
+    }
+
+    setIsCategoryExplorePanelOpen((isOpen) =>
+      selectedCategory === categoryId ? !isOpen : true
+    );
+  }
+
+  function handleSelectSubcategory(genreId) {
+    setSelectedSubcategory(genreId);
+    setSelectedLocationGroup(null);
+    setNearestEvent(null);
+    setNearestError("");
+  }
 
   function handleSelectEvent(event) {
     setSelectedLocationGroup(null);
@@ -353,7 +498,7 @@ export default function MapHomePage() {
       }
 
       const eventsWithDistance = addDistanceFromPoint(
-        filteredEvents,
+        subcategoryFilteredEvents,
         location
       ).filter((event) => Number.isFinite(event.distanceKm));
 
@@ -410,8 +555,9 @@ export default function MapHomePage() {
 
   function handleResetFilters() {
     setFilters({
-      timeRange: "all",
-      exactDate: "",
+      timeRange: "30d",
+      startDate: "",
+      endDate: "",
     });
 
     setNearestEvent(null);
@@ -419,6 +565,33 @@ export default function MapHomePage() {
   }
 
   const activeFilterSummary = getActiveFilterSummary(filters);
+
+  useEffect(() => {
+    if (!isCategoryExplorePanelOpen) {
+      return;
+    }
+
+    function isInsideCategoryExploreUi(target) {
+      return Boolean(
+        target instanceof Element &&
+          target.closest("[data-category-explore-panel], [data-category-explore-toggle]")
+      );
+    }
+
+    function handlePointerDown(event) {
+      if (isInsideCategoryExploreUi(event.target)) {
+        return;
+      }
+
+      setIsCategoryExplorePanelOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [isCategoryExplorePanelOpen]);
 
   useEffect(() => {
     if (!isFilterOpen) {
@@ -489,54 +662,14 @@ export default function MapHomePage() {
       />
 
       <div
-        className="absolute right-4 top-5 z-[60] flex flex-col items-end gap-3"
+        className={`absolute right-4 top-44 z-[20] flex flex-col items-end gap-3 transition duration-200 lg:top-24 ${
+          isAccountMenuOpen || isCategoryExplorePanelOpen
+            ? "pointer-events-none opacity-0"
+            : "opacity-100"
+        }`}
         aria-label="Map quick controls"
       >
         <div className="flex w-full flex-col items-end gap-3">
-          <div className="self-end" aria-label="User account">
-            {authSession?.user ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)}
-                  className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-600 text-lg font-black text-white shadow-xl shadow-purple-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:scale-105"
-                  aria-label="Open account menu"
-                  title={authSession.user.email}
-                >
-                  <span className="drop-shadow-sm">{getUserInitial()}</span>
-                </button>
-
-                {isAccountMenuOpen && (
-                  <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/95 text-slate-800 shadow-2xl shadow-slate-900/20 backdrop-blur">
-                    <div className="border-b border-slate-100 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Signed in as
-                      </p>
-                      <p className="mt-1 truncate text-sm font-semibold">
-                        {authSession.user.email}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleUserSignOut}
-                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
-                    >
-                      Log out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <a
-                href="/login"
-                className="flex h-12 items-center rounded-full bg-slate-950 px-4 text-sm font-bold text-white shadow-xl shadow-slate-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:bg-pink-600"
-              >
-                {isCheckingUserSession ? "Checking..." : "Log in"}
-              </a>
-            )}
-          </div>
-
           <button
             type="button"
             onClick={handleUseCurrentLocation}
@@ -554,11 +687,28 @@ export default function MapHomePage() {
             )}
           </button>
 
+          {/* Mobile: compact round button */}
           <button
             type="button"
             onClick={handleFindNearestEvent}
             disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
-            className="group flex items-center justify-end gap-2 self-end rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-12 w-12 items-center justify-center self-end rounded-full bg-gradient-to-br from-pink-500 via-rose-500 to-orange-400 text-xl shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 lg:hidden"
+            aria-label="Find nearest event"
+            title="Find nearest event"
+          >
+            {isFindingNearest ? (
+              <span className="text-sm font-black text-white">…</span>
+            ) : (
+              <span>✨</span>
+            )}
+          </button>
+
+          {/* Desktop: full labeled pill */}
+          <button
+            type="button"
+            onClick={handleFindNearestEvent}
+            disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
+            className="group hidden items-center justify-end gap-2 self-end rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 lg:flex"
             aria-label="Find nearest event"
             title="Find nearest event"
           >
@@ -582,24 +732,56 @@ export default function MapHomePage() {
 
       {!isLoadingEvents && displayedEvents.length === 0 && <EmptyState />}
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-50 p-4">
-        <div className="pointer-events-auto mx-auto max-w-5xl">
-          <SearchBar
-            query={query}
-            onQueryChange={handleQueryChange}
-            onFilterClick={() => setIsFilterOpen((isOpen) => !isOpen)}
-            onSearchSubmit={handleSearchLocation}
-            isSearchingLocation={isSearchingLocation}
-            activeFilterSummary={activeFilterSummary}
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
+        <div className="pointer-events-auto relative w-full">
+          <TopNavigation
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleSelectCategory}
+            authSession={authSession}
+            isCheckingUserSession={isCheckingUserSession}
+            isAccountMenuOpen={isAccountMenuOpen}
+            onToggleAccountMenu={() =>
+              setIsAccountMenuOpen((isOpen) => !isOpen)
+            }
+            onSignOut={handleUserSignOut}
+            savedEventsCount={savedEvents.length}
+            userInitial={getUserInitial()}
           />
 
-          <CategoryChips
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-          />
+          {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
+            <div className="absolute left-0 right-0 top-12 z-40 lg:top-16">
+              <CategoryExplorePanel
+                selectedCategory={selectedCategory}
+                selectedSubcategory={selectedSubcategory}
+                onSelectSubcategory={handleSelectSubcategory}
+                onClose={() => setIsCategoryExplorePanelOpen(false)}
+                avoidLeftPanel={isEventListPanelOpen}
+              />
+            </div>
+          )}
+
+          {/* Search bar: full width on mobile, fixed width left-aligned on desktop */}
+          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[360px] lg:px-0">
+            <SearchBar
+              query={query}
+              onQueryChange={handleQueryChange}
+              onFilterClick={() => setIsFilterOpen((isOpen) => !isOpen)}
+              onSearchSubmit={handleSearchLocation}
+              isSearchingLocation={isSearchingLocation}
+              activeFilterSummary={activeFilterSummary}
+            />
+          </div>
+
+          {/* Mobile category chips — horizontal scroll row, hidden on desktop */}
+          <div className="lg:hidden">
+            <MobileCategoryChips
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+            />
+          </div>
 
           {(destinationLocation || locationSearchError) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2 px-4 lg:px-0 lg:ml-5">
               {destinationLocation && (
                 <div className="rounded-2xl bg-white/95 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
                   Reference: {destinationLocation.shortLabel}
@@ -622,24 +804,24 @@ export default function MapHomePage() {
           )}
 
           {(nearestEvent || nearestError) && (
-  <div className="pointer-events-none fixed left-1/2 top-34 z-50 -translate-x-1/2">
-    {nearestEvent && Number.isFinite(nearestEvent.distanceKm) && (
-      <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
-        Nearest:{" "}
-        <span className="text-pink-600">{nearestEvent.title}</span>
-        <span className="ml-1 text-slate-500">
-          · {nearestEvent.distanceKm.toFixed(1)} km away
-        </span>
-      </div>
-    )}
+            <div className="pointer-events-none fixed left-1/2 top-48 z-50 -translate-x-1/2 lg:top-[8.5rem]">
+              {nearestEvent && Number.isFinite(nearestEvent.distanceKm) && (
+                <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
+                  Nearest:{" "}
+                  <span className="text-pink-600">{nearestEvent.title}</span>
+                  <span className="ml-1 text-slate-500">
+                    · {nearestEvent.distanceKm.toFixed(1)} km away
+                  </span>
+                </div>
+              )}
 
-    {nearestError && (
-      <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
-        {nearestError}
-      </div>
-    )}
-  </div>
-)}
+              {nearestError && (
+                <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
+                  {nearestError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -671,7 +853,27 @@ export default function MapHomePage() {
         }
       />
 
-      {selectedEvent && <EventPreviewCard event={selectedEvent} />}
+      <MobileEventListSheet
+        events={sidebarEvents}
+        selectedEvent={selectedEvent}
+        onSelectEvent={handleSelectEvent}
+        title={sidebarTitle}
+        subtitle={sidebarSubtitle}
+        onShowAllEvents={
+          selectedLocationGroup || destinationLocation
+            ? handleShowAllEvents
+            : undefined
+        }
+        isHidden={Boolean(selectedEvent)}
+      />
+
+      {selectedEvent && (
+        <EventPreviewCard
+          event={selectedEvent}
+          authSession={authSession}
+          onClose={handleClearMapSelection}
+        />
+      )}
 
       <FilterPanel
         isOpen={isFilterOpen}

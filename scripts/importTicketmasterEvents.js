@@ -31,6 +31,7 @@ const VANCOUVER_TIME_ZONE = "America/Vancouver";
 const SOURCE_NAME = "ticketmaster";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
+const IMPORT_DAYS_AHEAD = Number(process.env.TICKETMASTER_EVENTS_DAYS_AHEAD || 365);
 
 function toTicketmasterDateTime(date) {
   return date.toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -40,7 +41,7 @@ function getImportWindow() {
   const start = new Date();
   const end = new Date();
 
-  end.setDate(end.getDate() + 30);
+  end.setDate(end.getDate() + IMPORT_DAYS_AHEAD);
 
   return {
     startDateTime: toTicketmasterDateTime(start),
@@ -179,7 +180,7 @@ async function fetchTicketmasterPage(page) {
 async function importTicketmasterEvents() {
   console.log("Starting Ticketmaster import...");
   console.log(`Time zone reference: ${VANCOUVER_TIME_ZONE}`);
-  console.log("Fetching Vancouver events for the next 30 days...");
+  console.log(`Fetching Vancouver events for the next ${IMPORT_DAYS_AHEAD} days...`);
 
   let totalFetched = 0;
   let totalSaved = 0;
