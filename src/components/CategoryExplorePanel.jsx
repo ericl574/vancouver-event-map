@@ -1,26 +1,25 @@
 import { getCategoryTaxonomyById } from "../data/categoryTaxonomy";
 
-function SubcategoryButton({ subcategory, isSelected, onSelect }) {
+function SubcategoryChip({ subcategory, isSelected, onSelect }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(subcategory.id)}
       aria-pressed={isSelected}
-      className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-bold transition ${
+      className={`flex w-full items-center gap-2 rounded-2xl border px-3 py-2.5 text-left text-sm font-semibold transition active:scale-[0.97] ${
         isSelected
           ? "border-pink-300 bg-pink-50 text-pink-700 shadow-sm"
-          : "border-slate-200 bg-white text-slate-700 hover:border-pink-200 hover:bg-pink-50/70 hover:text-pink-700"
+          : "border-slate-200 bg-white text-slate-700 hover:border-pink-200 hover:bg-pink-50/70 hover:text-pink-600"
       }`}
     >
-      <span className="min-w-0 whitespace-normal leading-snug">{subcategory.label}</span>
-
       <span
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black ${
           isSelected ? "bg-pink-500 text-white" : "bg-slate-100 text-slate-400"
         }`}
       >
-        {isSelected ? "✓" : "›"}
+        {isSelected ? "✓" : "·"}
       </span>
+      <span className="min-w-0 truncate">{subcategory.label}</span>
     </button>
   );
 }
@@ -29,6 +28,7 @@ export default function CategoryExplorePanel({
   selectedCategory,
   selectedSubcategory,
   onSelectSubcategory,
+  onClose,
   avoidLeftPanel = false,
 }) {
   const category = getCategoryTaxonomyById(selectedCategory);
@@ -36,11 +36,11 @@ export default function CategoryExplorePanel({
   if (!category) return null;
 
   const allOption =
-    category.subcategories.find((subcategory) => subcategory.id === "all") ??
+    category.subcategories.find((s) => s.id === "all") ??
     category.subcategories[0];
 
   const selectableSubcategories = category.subcategories.filter(
-    (subcategory) => subcategory.id !== "all"
+    (s) => s.id !== "all"
   );
 
   const heroImageUrl =
@@ -49,69 +49,86 @@ export default function CategoryExplorePanel({
   return (
     <section
       data-category-explore-panel="true"
-      className={`relative w-full overflow-hidden border-b border-slate-200 bg-gradient-to-r from-white/0 via-white/90 to-white/95 px-6 py-5 text-slate-900 shadow-xl shadow-slate-900/10 backdrop-blur-xl transition-all duration-300 ${
-        avoidLeftPanel
-          ? "lg:ml-[390px] lg:w-[calc(100%-390px)]"
-          : ""
+      className={`relative flex max-h-[52dvh] w-full flex-col overflow-hidden border-b border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/10 backdrop-blur-xl transition-all duration-300 lg:block lg:max-h-none lg:overflow-hidden ${
+        avoidLeftPanel ? "lg:ml-[390px] lg:w-[calc(100%-390px)]" : ""
       }`}
     >
-      <div className="relative z-10 mx-auto grid max-w-7xl gap-5 lg:grid-cols-[300px_1fr]">
-        <button
-          type="button"
-          onClick={() => onSelectSubcategory("all")}
-          aria-pressed={selectedSubcategory === "all"}
-          className={`group relative min-h-[132px] overflow-hidden rounded-[1.5rem] border text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${
-            selectedSubcategory === "all"
-              ? "border-pink-300 ring-4 ring-pink-100"
-              : "border-white/70 hover:border-pink-200"
-          }`}
-        >
-          {heroImageUrl && (
-            <img
-              src={heroImageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-              loading="lazy"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          )}
+      {/* Inner scrollable wrapper — enables internal scroll on mobile if content overflows */}
+      <div className="no-scrollbar flex-1 overflow-y-auto">
+        <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] lg:gap-5 lg:px-6 lg:py-5">
 
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-slate-950/10" />
-
-          <div className="relative flex h-full min-h-[132px] flex-col justify-end p-5">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-pink-300">
-              {category.shortLabel || category.label}
-            </p>
-
-            <h2 className="mt-1 text-2xl font-black leading-tight text-white drop-shadow">
-              {category.allLabel || allOption?.label || category.label}
-            </h2>
-
-          </div>
-        </button>
-
-        <div className="min-w-0">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-              Explore by type
-            </h3>
-
-            <span className="hidden text-xs font-semibold text-slate-400 sm:inline">
-              Choose one to narrow the map
-            </span>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
-            {selectableSubcategories.map((subcategory) => (
-              <SubcategoryButton
-                key={subcategory.id}
-                subcategory={subcategory}
-                isSelected={selectedSubcategory === subcategory.id}
-                onSelect={onSelectSubcategory}
+          {/* Hero photo card — tapping selects "all" and closes the panel */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectSubcategory("all");
+              onClose?.();
+            }}
+            aria-pressed={selectedSubcategory === "all"}
+            className={`group relative cursor-pointer overflow-hidden text-left transition active:scale-[0.99] active:brightness-95 lg:min-h-[120px] lg:rounded-[1.5rem] lg:border lg:shadow-sm lg:hover:-translate-y-0.5 lg:hover:shadow-lg ${
+              selectedSubcategory === "all"
+                ? "lg:border-pink-300 lg:ring-4 lg:ring-pink-100"
+                : "lg:border-white/70 lg:hover:border-pink-200"
+            }`}
+          >
+            {heroImageUrl && (
+              <img
+                src={heroImageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
-            ))}
+            )}
+
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/45 to-slate-950/10" />
+
+            <div className="relative flex min-h-[84px] flex-col justify-end p-4 lg:min-h-[120px] lg:p-5">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-300 lg:text-xs">
+                {category.shortLabel || category.label}
+              </p>
+
+              <h2 className="mt-0.5 text-base font-black leading-tight text-white drop-shadow lg:mt-1 lg:text-2xl">
+                {category.allLabel || allOption?.label || category.label}
+              </h2>
+
+              <p className="mt-1 text-[11px] font-semibold text-white/65 lg:hidden">
+                Tap to show all events →
+              </p>
+            </div>
+          </button>
+
+          {/* Subcategory chips */}
+          <div className="px-4 py-3 lg:min-w-0 lg:px-0 lg:py-0">
+            <div className="mb-2.5 flex items-center justify-between gap-3">
+              <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                Explore by type
+              </h3>
+
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500 transition hover:bg-slate-200 hover:text-slate-800 lg:hidden"
+                  aria-label="Close explore panel"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {selectableSubcategories.map((subcategory) => (
+                <SubcategoryChip
+                  key={subcategory.id}
+                  subcategory={subcategory}
+                  isSelected={selectedSubcategory === subcategory.id}
+                  onSelect={onSelectSubcategory}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -23,18 +23,18 @@ export default function TopNavigation({
 
   return (
     <div className="w-full border-b border-slate-200/80 bg-white/95 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-none items-center gap-5 px-5">
+      <div className="mx-auto flex h-12 w-full max-w-none items-center gap-4 px-4 lg:h-16 lg:gap-5 lg:px-5">
         <a
           href="/"
-          className="flex shrink-0 items-center gap-3 transition hover:opacity-80"
+          className="flex shrink-0 items-center gap-2.5 transition hover:opacity-80 lg:gap-3"
           aria-label="Go to VanEvent home"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 via-rose-500 to-orange-400 text-base font-black text-white shadow-md shadow-pink-900/20">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 via-rose-500 to-orange-400 text-sm font-black text-white shadow-md shadow-pink-900/20 lg:h-9 lg:w-9 lg:text-base">
             V
           </span>
 
           <div className="leading-none">
-            <p className="text-lg font-black tracking-tight text-slate-950">
+            <p className="text-base font-black tracking-tight text-slate-950 lg:text-lg">
               VanEvent
             </p>
             <p className="mt-0.5 hidden text-[11px] font-black uppercase tracking-[0.22em] text-slate-400 sm:block">
@@ -43,11 +43,11 @@ export default function TopNavigation({
           </div>
         </a>
 
-        <div className="h-8 w-px shrink-0 bg-slate-200" />
+        <div className="hidden h-8 w-px shrink-0 bg-slate-200 lg:block" />
 
         <nav
           data-category-explore-toggle="true"
-          className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+          className="no-scrollbar hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto lg:flex"
           aria-label="Main event categories"
         >
           {navItems.map((category) => {
@@ -76,6 +76,9 @@ export default function TopNavigation({
             );
           })}
         </nav>
+
+        {/* Mobile spacer pushes account button to the right */}
+        <div className="flex-1 lg:hidden" />
 
         <div className="relative shrink-0">
           {authSession?.user ? (

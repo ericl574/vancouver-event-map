@@ -43,6 +43,7 @@ export default function EventPreviewCard({
   event,
   authSession,
   variant = "map",
+  onClose,
 }) {
   const [shareMessage, setShareMessage] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
@@ -74,11 +75,11 @@ export default function EventPreviewCard({
 
   const sectionClassName = isDetailVariant
     ? "relative h-full w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl shadow-slate-900/10"
-    : "absolute inset-x-0 bottom-0 z-40 max-h-[72vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
+    : "absolute inset-x-0 bottom-0 z-40 max-h-[56dvh] overflow-y-auto rounded-t-3xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-2xl lg:left-auto lg:max-h-[72vh] lg:pb-4 lg:right-6 lg:w-96 lg:rounded-3xl";
 
   const descriptionClassName = isDetailVariant
     ? "mt-4 text-sm leading-6 text-slate-600"
-    : "mt-3 line-clamp-3 text-sm text-slate-600";
+    : "mt-3 line-clamp-2 text-sm text-slate-600 sm:line-clamp-3";
 
   async function handleShareEvent() {
     const shareUrl = `${window.location.origin}/?event=${event.id}`;
@@ -273,7 +274,24 @@ ${event.price}`;
 
   return (
     <section className={sectionClassName}>
-      <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300 lg:hidden" />
+      {!isDetailVariant && (
+        <div className="mb-3 flex items-center lg:hidden">
+          <div className="flex-1" />
+          <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+          <div className="flex flex-1 justify-end">
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close event preview"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -321,7 +339,7 @@ ${event.price}`;
         {event.description || "No description provided."}
       </p>
 
-      {eventSubcategories.length > 0 && (
+      {eventSubcategories.length > 0 && (isDetailVariant || isDetailsOpen) && (
         <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
             Event analysis

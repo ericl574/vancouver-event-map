@@ -5,6 +5,8 @@ import EventListPanel from "../components/EventListPanel";
 import EventMap from "../components/EventMap";
 import EventPreviewCard from "../components/EventPreviewCard";
 import FilterPanel from "../components/FilterPanel";
+import MobileEventListSheet from "../components/MobileEventListSheet";
+import MobileCategoryChips from "../components/MobileCategoryChips";
 import CategoryExplorePanel from "../components/CategoryExplorePanel";
 import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
@@ -660,7 +662,7 @@ export default function MapHomePage() {
       />
 
       <div
-        className={`absolute right-4 top-24 z-[20] flex flex-col items-end gap-3 transition duration-200 ${
+        className={`absolute right-4 top-44 z-[20] flex flex-col items-end gap-3 transition duration-200 lg:top-24 ${
           isAccountMenuOpen || isCategoryExplorePanelOpen
             ? "pointer-events-none opacity-0"
             : "opacity-100"
@@ -685,11 +687,28 @@ export default function MapHomePage() {
             )}
           </button>
 
+          {/* Mobile: compact round button */}
           <button
             type="button"
             onClick={handleFindNearestEvent}
             disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
-            className="group flex items-center justify-end gap-2 self-end rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-12 w-12 items-center justify-center self-end rounded-full bg-gradient-to-br from-pink-500 via-rose-500 to-orange-400 text-xl shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 lg:hidden"
+            aria-label="Find nearest event"
+            title="Find nearest event"
+          >
+            {isFindingNearest ? (
+              <span className="text-sm font-black text-white">…</span>
+            ) : (
+              <span>✨</span>
+            )}
+          </button>
+
+          {/* Desktop: full labeled pill */}
+          <button
+            type="button"
+            onClick={handleFindNearestEvent}
+            disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
+            className="group hidden items-center justify-end gap-2 self-end rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 lg:flex"
             aria-label="Find nearest event"
             title="Find nearest event"
           >
@@ -730,17 +749,19 @@ export default function MapHomePage() {
           />
 
           {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
-            <div className="absolute left-0 right-0 top-16 z-40">
+            <div className="absolute left-0 right-0 top-12 z-40 lg:top-16">
               <CategoryExplorePanel
                 selectedCategory={selectedCategory}
                 selectedSubcategory={selectedSubcategory}
                 onSelectSubcategory={handleSelectSubcategory}
+                onClose={() => setIsCategoryExplorePanelOpen(false)}
                 avoidLeftPanel={isEventListPanelOpen}
               />
             </div>
           )}
 
-          <div className="mx-auto mt-3 w-[min(360px,calc(100vw-2rem))] lg:mx-0 lg:ml-5">
+          {/* Search bar: full width on mobile, fixed width left-aligned on desktop */}
+          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[360px] lg:px-0">
             <SearchBar
               query={query}
               onQueryChange={handleQueryChange}
@@ -751,8 +772,16 @@ export default function MapHomePage() {
             />
           </div>
 
+          {/* Mobile category chips — horizontal scroll row, hidden on desktop */}
+          <div className="lg:hidden">
+            <MobileCategoryChips
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+            />
+          </div>
+
           {(destinationLocation || locationSearchError) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2 px-4 lg:px-0 lg:ml-5">
               {destinationLocation && (
                 <div className="rounded-2xl bg-white/95 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
                   Reference: {destinationLocation.shortLabel}
@@ -775,24 +804,24 @@ export default function MapHomePage() {
           )}
 
           {(nearestEvent || nearestError) && (
-  <div className="pointer-events-none fixed left-1/2 top-34 z-50 -translate-x-1/2">
-    {nearestEvent && Number.isFinite(nearestEvent.distanceKm) && (
-      <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
-        Nearest:{" "}
-        <span className="text-pink-600">{nearestEvent.title}</span>
-        <span className="ml-1 text-slate-500">
-          · {nearestEvent.distanceKm.toFixed(1)} km away
-        </span>
-      </div>
-    )}
+            <div className="pointer-events-none fixed left-1/2 top-48 z-50 -translate-x-1/2 lg:top-[8.5rem]">
+              {nearestEvent && Number.isFinite(nearestEvent.distanceKm) && (
+                <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
+                  Nearest:{" "}
+                  <span className="text-pink-600">{nearestEvent.title}</span>
+                  <span className="ml-1 text-slate-500">
+                    · {nearestEvent.distanceKm.toFixed(1)} km away
+                  </span>
+                </div>
+              )}
 
-    {nearestError && (
-      <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
-        {nearestError}
-      </div>
-    )}
-  </div>
-)}
+              {nearestError && (
+                <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
+                  {nearestError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -824,8 +853,26 @@ export default function MapHomePage() {
         }
       />
 
+      <MobileEventListSheet
+        events={sidebarEvents}
+        selectedEvent={selectedEvent}
+        onSelectEvent={handleSelectEvent}
+        title={sidebarTitle}
+        subtitle={sidebarSubtitle}
+        onShowAllEvents={
+          selectedLocationGroup || destinationLocation
+            ? handleShowAllEvents
+            : undefined
+        }
+        isHidden={Boolean(selectedEvent)}
+      />
+
       {selectedEvent && (
-        <EventPreviewCard event={selectedEvent} authSession={authSession} />
+        <EventPreviewCard
+          event={selectedEvent}
+          authSession={authSession}
+          onClose={handleClearMapSelection}
+        />
       )}
 
       <FilterPanel
