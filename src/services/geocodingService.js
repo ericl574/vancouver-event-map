@@ -1,5 +1,43 @@
 const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 
+const MAPBOX_GEOCODE_URL = "https://api.mapbox.com/geocoding/v5/mapbox.places";
+const MAPBOX_BBOX = "-123.35,49.0,-122.55,49.38";
+
+export async function fetchAddressSuggestions(query) {
+  const token = import.meta.env.VITE_MAPBOX_TOKEN;
+
+  if (!token || !query || query.trim().length < 2) {
+    return [];
+  }
+
+  try {
+    const encoded = encodeURIComponent(query.trim());
+    const url =
+      `${MAPBOX_GEOCODE_URL}/${encoded}.json` +
+      `?access_token=${token}` +
+      `&country=CA` +
+      `&bbox=${MAPBOX_BBOX}` +
+      `&limit=5` +
+      `&types=address,place,locality,neighborhood,poi`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+
+    return (data.features || []).map((feature) => ({
+      id: feature.id,
+      label: feature.place_name,
+      shortLabel: feature.text || feature.place_name.split(",")[0].trim(),
+      lat: feature.center[1],
+      lng: feature.center[0],
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // Bias results toward Greater Vancouver.
 // Format: left,top,right,bottom = minLng,maxLat,maxLng,minLat
 const GREATER_VANCOUVER_VIEWBOX = "-123.35,49.38,-122.55,49.0";

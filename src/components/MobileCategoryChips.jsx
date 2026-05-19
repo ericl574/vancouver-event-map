@@ -1,7 +1,10 @@
 import CategoryIcon from "./CategoryIcon";
 import { categories } from "../data/categories";
 
-const navItems = [{ id: "all", label: "All", icon: "all" }, ...categories];
+const navItems = [
+  { id: "all", label: "All", icon: "all" },
+  ...categories.filter((c) => c.id !== "free"),
+];
 
 export default function MobileCategoryChips({ selectedCategory, onSelectCategory }) {
   return (

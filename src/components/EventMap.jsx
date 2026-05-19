@@ -2,15 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { CATEGORY_ICON_SVGS } from "../assets/categoryIcons";
-import { getCategoryById } from "../data/categories";
+import { categories, getCategoryById } from "../data/categories";
+import { IconLocate } from "./Icons";
 
-const GREATER_VANCOUVER_CENTER = [-123.1162, 49.2463];
+const GREATER_VANCOUVER_CENTER = [-123.1207, 49.2827];
 
-const INITIAL_MAP_ZOOM = 10.9;
+const INITIAL_MAP_ZOOM = 13.0;
 const USER_LOCATION_ZOOM = 14.6;
 const EVENT_FOCUS_ZOOM = 14.6;
-const MAP_PITCH = 56;
-const MAP_BEARING = 0;
+const MAP_PITCH = 60;
+const MAP_BEARING = -28;
 
 const EVENT_SOURCE_ID = "event-points";
 
@@ -153,6 +154,7 @@ function createEventGeoJson(events, selectedEvent) {
           selected: group.selected ? 1 : 0,
           category: category.id || primaryEvent?.category || "event",
           categoryIcon: iconName,
+          categoryHex: category.hex || "#ec4899",
           iconImage: `category-${iconName}`,
           selectedIconImage: `category-${iconName}-selected`,
           venue: group.venue || "This location",
@@ -378,7 +380,7 @@ async function addCategoryIconImages(map) {
       const normalImageName = `category-${iconName}`;
       const selectedImageName = `category-${iconName}-selected`;
 
-      const normalSvg = colorizeSvg(svg, "#0f172a");
+      const normalSvg = colorizeSvg(svg, "#ffffff");
       const selectedSvg = colorizeSvg(svg, "#ffffff");
 
       return [
@@ -407,7 +409,7 @@ async function addCategoryIconImages(map) {
         <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none" />
       </svg>`;
 
-    const image = await svgToImageData(colorizeSvg(fallbackSvg, "#0f172a"));
+    const image = await svgToImageData(colorizeSvg(fallbackSvg, "#ffffff"));
     map.addImage("category-event", image, {
       pixelRatio: 2,
     });
@@ -465,8 +467,8 @@ function getBadgeRadius(count, isSelected = false) {
 
 function createCountBadgeImage(count, isSelected = false) {
   const radius = getBadgeRadius(count, isSelected);
-  const strokeWidth = isSelected ? 3.5 : 1.25;
-  const padding = 5;
+  const strokeWidth = isSelected ? 3.5 : 2.5;
+  const padding = 10;
   const displaySize = Math.ceil((radius + strokeWidth + padding) * 2);
   const canvas = document.createElement("canvas");
 
@@ -478,17 +480,32 @@ function createCountBadgeImage(count, isSelected = false) {
 
   const center = displaySize / 2;
 
+  // Drop shadow
+  context.save();
+  context.shadowColor = "rgba(15, 23, 42, 0.28)";
+  context.shadowBlur = 8;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = 3;
   context.beginPath();
   context.arc(center, center, radius, 0, Math.PI * 2);
-  context.fillStyle = isSelected ? "#ec4899" : "#fdf2f8";
+  context.fillStyle = isSelected ? "#db2777" : "#ec4899";
+  context.fill();
+  context.restore();
+
+  // Solid fill (no shadow, drawn over shadow)
+  context.beginPath();
+  context.arc(center, center, radius, 0, Math.PI * 2);
+  context.fillStyle = isSelected ? "#db2777" : "#ec4899";
   context.fill();
 
+  // White border
   context.lineWidth = strokeWidth;
-  context.strokeStyle = isSelected ? "rgba(255, 255, 255, 0.98)" : "#f9a8d4";
+  context.strokeStyle = "rgba(255, 255, 255, 0.95)";
   context.stroke();
 
-  context.font = `700 ${radius >= 30 ? 16 : radius >= 24 ? 15 : 14}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.fillStyle = isSelected ? "#ffffff" : "#be185d";
+  // Count label
+  context.font = `800 ${radius >= 30 ? 16 : radius >= 24 ? 15 : 14}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.fillStyle = "#ffffff";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(String(clampBadgeCount(count)), center, center + 0.5);
@@ -515,6 +532,115 @@ function addCountBadgeImages(map) {
   }
 }
 
+function drawPinShape(ctx, cx, bubbleCY, bubbleR, tipY, tailBaseHalf) {
+  const safeHalf = Math.min(tailBaseHalf, bubbleR * 0.9);
+  const halfAngle = Math.asin(safeHalf / bubbleR);
+  ctx.beginPath();
+  ctx.arc(cx, bubbleCY, bubbleR, Math.PI / 2 + halfAngle, Math.PI / 2 - halfAngle, false);
+  ctx.lineTo(cx, tipY);
+  ctx.closePath();
+}
+
+async function createPinMarkerImage(categoryHex, iconSvg, isSelected) {
+  const PIXEL_RATIO = 2;
+  const bubbleR = isSelected ? 24 : 18;
+  const strokeW = isSelected ? 4 : 3;
+  const tailH = isSelected ? 14 : 12;
+  const tailBaseHalf = isSelected ? 7 : 6;
+  const padTop = isSelected ? 12 : 10;
+  const padSide = isSelected ? 12 : 10;
+
+  const canvasW = (bubbleR + padSide) * 2;
+  const canvasH = padTop + bubbleR * 2 + tailH;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasW * PIXEL_RATIO;
+  canvas.height = canvasH * PIXEL_RATIO;
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(PIXEL_RATIO, PIXEL_RATIO);
+
+  const cx = canvasW / 2;
+  const cy = padTop + bubbleR;
+  const tipY = canvasH;
+
+  // Drop shadow
+  ctx.save();
+  ctx.shadowColor = "rgba(15, 23, 42, 0.30)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 4;
+  drawPinShape(ctx, cx, cy, bubbleR, tipY, tailBaseHalf);
+  ctx.fillStyle = isSelected ? "#2563eb" : categoryHex;
+  ctx.fill();
+  ctx.restore();
+
+  // White outer ring
+  drawPinShape(ctx, cx, cy, bubbleR, tipY, tailBaseHalf);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+
+  // Colored inner fill
+  drawPinShape(ctx, cx, cy, bubbleR - strokeW, tipY, tailBaseHalf - 1.5);
+  ctx.fillStyle = isSelected ? "#2563eb" : categoryHex;
+  ctx.fill();
+
+  // Icon
+  if (iconSvg) {
+    try {
+      const coloredSvg = colorizeSvg(iconSvg, "#ffffff");
+      const iconSize = isSelected ? 20 : 16;
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(coloredSvg)}`;
+      });
+      ctx.drawImage(img, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize);
+    } catch {
+      // icon unavailable — pin still renders with colored bubble
+    }
+  }
+
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
+async function addPinMarkerImages(map) {
+  const fallbackSvg = CATEGORY_ICON_SVGS.event ||
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
+
+  await Promise.all(
+    categories.map(async (category) => {
+      const iconSvg = CATEGORY_ICON_SVGS[category.icon] || fallbackSvg;
+      const hex = category.hex || "#ec4899";
+      const normalName = `pin-${category.id}`;
+      const selectedName = `pin-${category.id}-selected`;
+
+      const [normalImg, selectedImg] = await Promise.all([
+        createPinMarkerImage(hex, iconSvg, false),
+        createPinMarkerImage(hex, iconSvg, true),
+      ]);
+
+      if (!map.hasImage(normalName)) {
+        map.addImage(normalName, normalImg, { pixelRatio: BADGE_IMAGE_PIXEL_RATIO });
+      }
+      if (!map.hasImage(selectedName)) {
+        map.addImage(selectedName, selectedImg, { pixelRatio: BADGE_IMAGE_PIXEL_RATIO });
+      }
+    })
+  );
+
+  // Fallback pin for unknown categories
+  if (!map.hasImage("pin-event")) {
+    const img = await createPinMarkerImage("#ec4899", fallbackSvg, false);
+    map.addImage("pin-event", img, { pixelRatio: BADGE_IMAGE_PIXEL_RATIO });
+  }
+  if (!map.hasImage("pin-event-selected")) {
+    const img = await createPinMarkerImage("#ec4899", fallbackSvg, true);
+    map.addImage("pin-event-selected", img, { pixelRatio: BADGE_IMAGE_PIXEL_RATIO });
+  }
+}
+
 function addEventLayers(map) {
   if (map.getSource(EVENT_SOURCE_ID)) return;
 
@@ -535,41 +661,77 @@ function addEventLayers(map) {
     },
   });
 
+  // Outer glow backdrop behind selected pin bubble
   map.addLayer({
-    id: EVENT_SINGLE_DOT_LAYER_ID,
+    id: "event-selected-single-glow",
     type: "circle",
     source: EVENT_SOURCE_ID,
     filter: [
       "all",
       ["!", ["has", "point_count"]],
       ["==", ["get", "eventCount"], 1],
+      ["==", ["get", "selected"], 1],
     ],
     paint: {
-      "circle-color": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        "#ef4444",
-        "#dbeafe",
-      ],
-      "circle-radius": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        18,
-        16,
-      ],
-      "circle-stroke-color": "rgba(255, 255, 255, 0.98)",
-      "circle-stroke-width": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        3,
-        2.5,
-      ],
-      "circle-opacity": 0.98,
+      "circle-color": "rgba(37, 99, 235, 0.22)",
+      "circle-radius": 38,
+      "circle-blur": 0.55,
+      "circle-stroke-width": 0,
+      "circle-opacity": 1,
+      "circle-translate": [0, -38],
+      "circle-translate-anchor": "viewport",
     },
   });
 
+  // Animated pulse ring (radius/opacity driven by requestAnimationFrame)
   map.addLayer({
-    id: EVENT_SINGLE_ICON_LAYER_ID,
+    id: "event-selected-pulse-ring",
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      ["==", ["get", "eventCount"], 1],
+      ["==", ["get", "selected"], 1],
+    ],
+    paint: {
+      "circle-color": "rgba(0,0,0,0)",
+      "circle-radius": 22,
+      "circle-stroke-color": "rgba(59, 130, 246, 0.70)",
+      "circle-stroke-width": 2.5,
+      "circle-stroke-opacity": 0.5,
+      "circle-opacity": 0,
+      "circle-translate": [0, -38],
+      "circle-translate-anchor": "viewport",
+    },
+  });
+
+  // Solid ring border around selected pin bubble
+  map.addLayer({
+    id: "event-selected-single-ring",
+    type: "circle",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      ["==", ["get", "eventCount"], 1],
+      ["==", ["get", "selected"], 1],
+    ],
+    paint: {
+      "circle-color": "rgba(0, 0, 0, 0)",
+      "circle-radius": 26,
+      "circle-stroke-color": "rgba(37, 99, 235, 0.55)",
+      "circle-stroke-width": 2,
+      "circle-stroke-opacity": 1,
+      "circle-opacity": 0,
+      "circle-translate": [0, -38],
+      "circle-translate-anchor": "viewport",
+    },
+  });
+
+  // Single-event pin markers — baked canvas: shadow + white ring + colored bubble + icon
+  map.addLayer({
+    id: EVENT_SINGLE_DOT_LAYER_ID,
     type: "symbol",
     source: EVENT_SOURCE_ID,
     filter: [
@@ -581,16 +743,11 @@ function addEventLayers(map) {
       "icon-image": [
         "case",
         ["==", ["get", "selected"], 1],
-        ["get", "selectedIconImage"],
-        ["get", "iconImage"],
+        ["concat", "pin-", ["get", "category"], "-selected"],
+        ["concat", "pin-", ["get", "category"]],
       ],
-      "icon-size": [
-        "case",
-        ["==", ["get", "selected"], 1],
-        1.28,
-        1.24,
-      ],
-      "icon-anchor": "center",
+      "icon-size": 1,
+      "icon-anchor": "bottom",
       "icon-allow-overlap": true,
       "icon-ignore-placement": true,
     },
@@ -718,14 +875,18 @@ export default function EventMap({
   onMapBackgroundClick,
   userLocation,
   destinationLocation,
+  onLocate,
+  isLocating = false,
 }) {
   const [isMapReady, setIsMapReady] = useState(false);
+  const [is3dMode, setIs3dMode] = useState(true);
 
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
   const destinationMarkerRef = useRef(null);
   const suppressNextSelectedFlyRef = useRef(false);
+  const glowAnimRef = useRef(null);
 
   const eventsRef = useRef(events);
   const onSelectEventRef = useRef(onSelectEvent);
@@ -887,7 +1048,8 @@ export default function EventMap({
         EVENT_LOCATION_GROUP_LAYER_ID,
         EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
         EVENT_SINGLE_DOT_LAYER_ID,
-        EVENT_SINGLE_ICON_LAYER_ID,
+        "event-selected-single-glow",
+        "event-selected-single-ring",
       ].filter((layerId) => map.getLayer(layerId));
 
       if (interactiveLayers.length === 0) {
@@ -930,9 +1092,58 @@ export default function EventMap({
 
     const bindEventLayerHandlers = async () => {
       try {
-        await addCategoryIconImages(map);
+        await addPinMarkerImages(map);
       } catch (error) {
-        console.error("Could not load category icons:", error);
+        console.error("Could not load pin marker images:", error);
+      }
+
+      // Inject 3D building extrusions before event marker layers
+      try {
+        const mapStyle = map.getStyle();
+        const firstSymbolLayer = mapStyle.layers.find((l) => l.type === "symbol");
+        const insertBefore = firstSymbolLayer?.id;
+
+        if (!map.getLayer("buildings-3d") && map.getSource("openmaptiles")) {
+          map.addLayer(
+            {
+              id: "buildings-3d",
+              source: "openmaptiles",
+              "source-layer": "building",
+              type: "fill-extrusion",
+              minzoom: 13,
+              paint: {
+                "fill-extrusion-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "render_height"], 0],
+                  0, "#f8fafc",
+                  20, "#f1f5f9",
+                  50, "#e2e8f0",
+                  100, "#cbd5e1",
+                ],
+                "fill-extrusion-height": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  13, 0,
+                  14, ["coalesce", ["get", "render_height"], 3],
+                ],
+                "fill-extrusion-base": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  13, 0,
+                  14, ["coalesce", ["get", "render_min_height"], 0],
+                ],
+                "fill-extrusion-opacity": 0.82,
+                "fill-extrusion-vertical-gradient": true,
+              },
+            },
+            insertBefore
+          );
+        }
+      } catch (buildingError) {
+        console.info("3D buildings unavailable:", buildingError.message);
       }
 
       addEventLayers(map);
@@ -950,7 +1161,6 @@ export default function EventMap({
       map.on("click", EVENT_LOCATION_GROUP_COUNT_LAYER_ID, handleGroupClick);
 
       map.on("click", EVENT_SINGLE_DOT_LAYER_ID, handleSingleClick);
-      map.on("click", EVENT_SINGLE_ICON_LAYER_ID, handleSingleClick);
       map.on("mousedown", handleMapBackgroundPointerDown);
       map.on("mouseup", handleMapBackgroundPointerUp);
 
@@ -960,7 +1170,6 @@ export default function EventMap({
         EVENT_LOCATION_GROUP_LAYER_ID,
         EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
         EVENT_SINGLE_DOT_LAYER_ID,
-        EVENT_SINGLE_ICON_LAYER_ID,
       ].forEach((layerId) => {
         map.on("mouseenter", layerId, setPointerCursor);
         map.on("mouseleave", layerId, clearPointerCursor);
@@ -1112,14 +1321,114 @@ export default function EventMap({
     });
   }, [destinationLocation]);
 
-  return (
-    <section
-      className="absolute inset-0 z-0 overflow-hidden"
-      aria-label="Greater Vancouver event map"
-    >
-      <div ref={mapContainerRef} className="h-full w-full" />
+  // Pulse-ring animation for the selected marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapReady) return;
 
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-rose-50/25 via-transparent to-white/10" />
-    </section>
+    function stopAnim() {
+      if (glowAnimRef.current) {
+        cancelAnimationFrame(glowAnimRef.current);
+        glowAnimRef.current = null;
+      }
+    }
+
+    if (!selectedEvent) {
+      stopAnim();
+      return;
+    }
+
+    function frame() {
+      if (!map.getLayer("event-selected-pulse-ring")) return;
+      const t = (Date.now() % 2200) / 2200;
+      const ease = 0.5 - 0.5 * Math.cos(t * Math.PI * 2);
+      map.setPaintProperty("event-selected-pulse-ring", "circle-radius", 22 + ease * 20);
+      map.setPaintProperty("event-selected-pulse-ring", "circle-stroke-opacity", 0.65 * (1 - ease));
+      glowAnimRef.current = requestAnimationFrame(frame);
+    }
+
+    stopAnim();
+    glowAnimRef.current = requestAnimationFrame(frame);
+    return stopAnim;
+  }, [selectedEvent, isMapReady]);
+
+  function handleToggle3d() {
+    const map = mapRef.current;
+    if (!map) return;
+    const newMode = !is3dMode;
+    setIs3dMode(newMode);
+    map.easeTo({
+      pitch: newMode ? MAP_PITCH : 0,
+      bearing: newMode ? MAP_BEARING : 0,
+      duration: 600,
+    });
+  }
+
+  return (
+    <>
+      <section
+        className="absolute inset-0 z-0 overflow-hidden"
+        aria-label="Greater Vancouver event map"
+      >
+        <div ref={mapContainerRef} className="h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-rose-50/25 via-transparent to-white/10" />
+      </section>
+
+      {isMapReady && (
+        <div className="absolute right-4 top-44 z-20 flex flex-col items-center gap-1.5 lg:top-[4.5rem]">
+          {/* Locate */}
+          <button
+            type="button"
+            onClick={onLocate}
+            disabled={isLocating}
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-700 shadow-lg shadow-slate-900/15 ring-1 ring-slate-200/80 transition hover:bg-slate-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Use current location"
+            title="Use current location"
+          >
+            {isLocating ? (
+              <span className="text-xs font-black">…</span>
+            ) : (
+              <IconLocate className="h-4 w-4" />
+            )}
+          </button>
+
+          {/* Zoom +/- stacked */}
+          <div className="flex flex-col overflow-hidden rounded-xl shadow-lg shadow-slate-900/15 ring-1 ring-slate-200/80">
+            <button
+              type="button"
+              onClick={() => mapRef.current?.zoomIn()}
+              className="flex h-9 w-9 items-center justify-center bg-white/95 text-xl font-bold text-slate-700 transition hover:bg-slate-950 hover:text-white"
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+            <div className="h-px bg-slate-200/80" />
+            <button
+              type="button"
+              onClick={() => mapRef.current?.zoomOut()}
+              className="flex h-9 w-9 items-center justify-center bg-white/95 text-xl font-bold text-slate-700 transition hover:bg-slate-950 hover:text-white"
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+          </div>
+
+          {/* 3D toggle */}
+          <button
+            type="button"
+            onClick={handleToggle3d}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black shadow-lg shadow-slate-900/15 ring-1 transition ${
+              is3dMode
+                ? "bg-slate-950 text-white ring-slate-800"
+                : "bg-white/95 text-slate-600 ring-slate-200/80 hover:bg-slate-950 hover:text-white"
+            }`}
+            aria-label="Toggle 3D view"
+            title={is3dMode ? "Switch to flat view" : "Switch to 3D view"}
+          >
+            3D
+          </button>
+        </div>
+      )}
+    </>
   );
 }

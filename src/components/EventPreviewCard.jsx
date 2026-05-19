@@ -49,7 +49,6 @@ export default function EventPreviewCard({
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaved, setIsSaved] = useState(false);
   const [isCalendarMenuOpen, setIsCalendarMenuOpen] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(variant === "detail");
   const [mobileSheetState, setMobileSheetState] = useState("compact");
   const [isMobileLayout, setIsMobileLayout] = useState(
     () => window.matchMedia("(max-width: 1023px)").matches
@@ -62,7 +61,6 @@ export default function EventPreviewCard({
   const isDetailVariant = variant === "detail";
 
   useEffect(() => {
-    setIsDetailsOpen(isDetailVariant);
     setMobileSheetState("compact");
   }, [event?.id, isDetailVariant]);
 
@@ -189,8 +187,11 @@ ${event.price}`;
   }
 
   function handleAddToGoogleCalendar() {
-    const start = buildCalendarDate(event.date, event.startTime);
-    const end = buildCalendarDate(event.date, event.endTime);
+    const rawDate = event.event_date || event.eventDate || event.date;
+    const rawStart = event.start_time || event.rawStartTime || event.startTime;
+    const rawEnd = event.end_time || event.rawEndTime || event.endTime;
+    const start = buildCalendarDate(rawDate, rawStart);
+    const end = buildCalendarDate(rawDate, rawEnd);
 
     const finalEnd =
       end && end > start
@@ -216,8 +217,11 @@ ${event.price}`;
   }
 
   function handleDownloadCalendarFile() {
-    const start = buildCalendarDate(event.date, event.startTime);
-    const end = buildCalendarDate(event.date, event.endTime);
+    const rawDate = event.event_date || event.eventDate || event.date;
+    const rawStart = event.start_time || event.rawStartTime || event.startTime;
+    const rawEnd = event.end_time || event.rawEndTime || event.endTime;
+    const start = buildCalendarDate(rawDate, rawStart);
+    const end = buildCalendarDate(rawDate, rawEnd);
 
     const finalEnd =
       end && end > start
@@ -340,12 +344,10 @@ ${event.price}`;
         onClose?.(); // drag down = dismiss, back to list
       } else if (delta < -50) {
         setMobileSheetState("full");
-        setIsDetailsOpen(true);
       }
     } else {
       if (delta > 50) {
         setMobileSheetState("compact");
-        setIsDetailsOpen(false);
       }
     }
   }
@@ -466,7 +468,7 @@ ${event.price}`;
           {event.description || "No description provided."}
         </p>
 
-        {eventSubcategories.length > 0 && (isDetailVariant || isDetailsOpen) && (
+        {eventSubcategories.length > 0 && (
           <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
               Event analysis
@@ -504,12 +506,11 @@ ${event.price}`;
           </div>
         </div>
 
-        {isDetailsOpen && (
-          <div
-            className={`mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 ${
-              isDetailVariant ? "p-4" : "p-3"
-            }`}
-          >
+        <div
+          className={`mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 ${
+            isDetailVariant ? "p-4" : "p-3"
+          }`}
+        >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
                 Event details
@@ -591,84 +592,68 @@ ${event.price}`;
               </div>
             )}
           </div>
-        )}
 
-        {(shareMessage || saveMessage) && (
-          <p
-            className={`mt-3 rounded-2xl px-3 py-2 text-center text-xs font-semibold ${
-              saveMessage
-                ? "bg-pink-50 text-pink-700"
-                : "bg-rose-50 text-rose-700"
-            }`}
-          >
-            {saveMessage || shareMessage}
+        {saveMessage && (
+          <p className="mt-3 rounded-2xl bg-pink-50 px-3 py-2 text-center text-xs font-semibold text-pink-700">
+            {saveMessage}
           </p>
         )}
 
-        <div className="mt-4 flex gap-2">
-          {/* Desktop only: View Details toggle */}
-          <button
-            type="button"
-            onClick={() => setIsDetailsOpen((isOpen) => !isOpen)}
-            className="hidden flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 lg:flex"
-          >
-            {isDetailsOpen ? "Hide Details" : "View Details"}
-          </button>
+        {isDetailVariant && (
+          <div className="mt-4 flex gap-2">
+            {eventUrl && (
+              <a
+                href={eventUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-1 items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
+              >
+                Tickets
+              </a>
+            )}
 
-          {/* Mobile: drag up on the header to expand; View Details hidden */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
+                className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                aria-label="Add to calendar"
+                title="Add to calendar"
+              >
+                <IconCalendarPlus className="h-5 w-5" />
+              </button>
 
-          {eventUrl && (
-            <a
-              href={eventUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
-            >
-              Tickets
-            </a>
-          )}
+              {isCalendarMenuOpen && (
+                <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
+                  <button
+                    type="button"
+                    onClick={handleAddToGoogleCalendar}
+                    className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                  >
+                    Google Calendar
+                  </button>
 
-          <div className="relative">
+                  <button
+                    type="button"
+                    onClick={handleDownloadCalendarFile}
+                    className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
+                  >
+                    Computer Calendar (.ics)
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
+              onClick={handleShareEvent}
               className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-              aria-label="Add to calendar"
-              title="Add to calendar"
+              aria-label="Share event"
             >
-              <IconCalendarPlus className="h-5 w-5" />
+              <IconShare className="h-5 w-5" />
             </button>
-
-            {isCalendarMenuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
-                <button
-                  type="button"
-                  onClick={handleAddToGoogleCalendar}
-                  className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
-                >
-                  Google Calendar
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleDownloadCalendarFile}
-                  className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
-                >
-                  Computer Calendar (.ics)
-                </button>
-              </div>
-            )}
           </div>
-
-          <button
-            type="button"
-            onClick={handleShareEvent}
-            className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-            aria-label="Share event"
-          >
-            <IconShare className="h-5 w-5" />
-          </button>
-        </div>
+        )}
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import CategoryIcon from "./CategoryIcon";
+import { IconBookmark } from "./Icons";
 import { categories } from "../data/categories";
 
 export default function TopNavigation({
@@ -18,12 +19,12 @@ export default function TopNavigation({
       label: "All",
       icon: "all",
     },
-    ...categories,
+    ...categories.filter((c) => c.id !== "free"),
   ];
 
   return (
     <div className="w-full border-b border-slate-200/80 bg-white/95 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-      <div className="mx-auto flex h-12 w-full max-w-none items-center gap-4 px-4 lg:h-16 lg:gap-5 lg:px-5">
+      <div className="mx-auto flex h-12 w-full max-w-none items-center gap-3 px-4 lg:h-14 lg:gap-4 lg:px-5">
         <a
           href="/"
           className="flex shrink-0 items-center gap-2.5 transition hover:opacity-80 lg:gap-3"
@@ -59,16 +60,16 @@ export default function TopNavigation({
                 type="button"
                 onClick={() => onSelectCategory(category.id)}
                 aria-pressed={isSelected}
-                className={`flex h-10 shrink-0 items-center gap-2 px-3 text-sm font-bold transition ${
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold transition ${
                   isSelected
-                    ? "text-pink-600"
-                    : "text-slate-600 hover:text-slate-950"
+                    ? "bg-pink-500 text-white shadow-sm shadow-pink-900/20"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
                 <CategoryIcon
                   icon={category.icon}
                   className={`h-4 w-4 ${
-                    isSelected ? "text-pink-600" : "text-slate-500"
+                    isSelected ? "text-white" : "text-slate-500"
                   }`}
                 />
                 <span>{category.label}</span>
@@ -79,6 +80,21 @@ export default function TopNavigation({
 
         {/* Mobile spacer pushes account button to the right */}
         <div className="flex-1 lg:hidden" />
+
+        {/* Saved link — desktop only */}
+        <a
+          href="/favorites"
+          className="hidden h-9 items-center gap-1.5 rounded-full border border-slate-200 px-3.5 text-sm font-semibold text-slate-700 transition hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 lg:flex"
+          aria-label="Saved events"
+        >
+          <IconBookmark className="h-4 w-4" />
+          <span>Saved</span>
+          {savedEventsCount > 0 && (
+            <span className="rounded-full bg-pink-100 px-1.5 py-0.5 text-[10px] font-bold text-pink-700">
+              {savedEventsCount}
+            </span>
+          )}
+        </a>
 
         <div className="relative shrink-0">
           {authSession?.user ? (

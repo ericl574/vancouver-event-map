@@ -17,6 +17,7 @@ export default function MobileEventListSheet({
   subtitle,
   onShowAllEvents,
   isHidden = false,
+  authSession,
 }) {
   const [sheetState, setSheetState] = useState("peek");
   const [dragY, setDragY] = useState(0);
@@ -200,6 +201,7 @@ export default function MobileEventListSheet({
                 event={event}
                 isSelected={String(selectedEvent?.id) === String(event.id)}
                 onClick={handleSelectEvent}
+                authSession={authSession}
               />
             </div>
           ))

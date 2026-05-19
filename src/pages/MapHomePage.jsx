@@ -8,7 +8,6 @@ import FilterPanel from "../components/FilterPanel";
 import MobileEventListSheet from "../components/MobileEventListSheet";
 import MobileCategoryChips from "../components/MobileCategoryChips";
 import CategoryExplorePanel from "../components/CategoryExplorePanel";
-import { IconLocate } from "../components/Icons";
 import SearchBar from "../components/SearchBar";
 import { getCurrentSession, signOutUser } from "../services/authService";
 import { getApprovedEvents } from "../services/eventService";
@@ -420,6 +419,16 @@ export default function MapHomePage() {
     }
   }
 
+  function handleSelectAddressSuggestion(suggestion) {
+    setQuery(suggestion.label);
+    setDestinationLocation(suggestion);
+    setLocationSearchError("");
+    setSelectedLocationGroup(null);
+    setNearestEvent(null);
+    setNearestError("");
+    setSelectedEvent(null);
+  }
+
   async function handleSearchLocation(searchText) {
     const trimmedSearchText = searchText.trim();
 
@@ -553,6 +562,31 @@ export default function MapHomePage() {
     return email.trim().charAt(0).toUpperCase() || "U";
   }
 
+  function handleThisWeekend() {
+    const today = new Date();
+    const dow = today.getDay(); // 0=Sun, 6=Sat, 5=Fri
+    const startDate = new Date(today);
+    const endDate = new Date(today);
+
+    if (dow === 0) {
+      // Sunday — just today
+    } else if (dow === 6) {
+      // Saturday — Sat + Sun
+      endDate.setDate(today.getDate() + 1);
+    } else if (dow === 5) {
+      // Friday — Fri through Sun
+      endDate.setDate(today.getDate() + 2);
+    } else {
+      // Mon–Thu — next Fri through Sun
+      const daysToFri = 5 - dow;
+      startDate.setDate(today.getDate() + daysToFri);
+      endDate.setDate(today.getDate() + daysToFri + 2);
+    }
+
+    const toISO = (d) => d.toISOString().split("T")[0];
+    setFilters({ timeRange: "", startDate: toISO(startDate), endDate: toISO(endDate) });
+  }
+
   function handleResetFilters() {
     setFilters({
       timeRange: "30d",
@@ -565,6 +599,67 @@ export default function MapHomePage() {
   }
 
   const activeFilterSummary = getActiveFilterSummary(filters);
+
+  const isWeekendFilter =
+    filters.startDate && filters.endDate && !filters.timeRange;
+
+  const contextLabel =
+    filters.timeRange === "24h"
+      ? "Tonight"
+      : isWeekendFilter
+        ? "This Weekend"
+        : selectedCategory === "free"
+          ? "Free Events"
+          : "Vancouver";
+
+  const freeCount = displayedEvents.filter(
+    (e) => e.isFree || e.category === "free"
+  ).length;
+
+  const referencePoint = userLocation || destinationLocation;
+  const nearCount = referencePoint
+    ? displayedEvents.filter(
+        (e) => typeof e.distanceKm === "number" && e.distanceKm <= 5
+      ).length
+    : 0;
+
+  const quickChips = [
+    {
+      label: "Tonight",
+      active: filters.timeRange === "24h" && !filters.startDate,
+      onSelect: () =>
+        filters.timeRange === "24h" && !filters.startDate
+          ? setFilters({ timeRange: "30d", startDate: "", endDate: "" })
+          : setFilters({ timeRange: "24h", startDate: "", endDate: "" }),
+    },
+    {
+      label: "This Weekend",
+      active: Boolean(isWeekendFilter),
+      onSelect: () =>
+        isWeekendFilter
+          ? setFilters({ timeRange: "30d", startDate: "", endDate: "" })
+          : handleThisWeekend(),
+    },
+    {
+      label: "Free",
+      active: selectedCategory === "free",
+      onSelect: () =>
+        handleSelectCategory(selectedCategory === "free" ? "all" : "free"),
+    },
+    {
+      label: "Near Me",
+      active: Boolean(nearestEvent),
+      onSelect: () => {
+        if (nearestEvent) {
+          setNearestEvent(null);
+          setNearestError("");
+          setSelectedEvent(null);
+        } else {
+          handleFindNearestEvent();
+        }
+      },
+    },
+  ];
 
   useEffect(() => {
     if (!isCategoryExplorePanelOpen) {
@@ -657,78 +752,28 @@ export default function MapHomePage() {
         onSelectEvent={handleSelectEvent}
         onSelectLocationGroup={handleSelectLocationGroup}
         onClearSelection={handleClearMapSelection}
+        onMapBackgroundClick={handleMapBackgroundClick}
         userLocation={userLocation}
         destinationLocation={destinationLocation}
+        onLocate={handleUseCurrentLocation}
+        isLocating={isLocating}
       />
 
-      <div
-        className={`absolute right-4 top-44 z-[20] flex flex-col items-end gap-3 transition duration-200 lg:top-24 ${
-          isAccountMenuOpen || isCategoryExplorePanelOpen
-            ? "pointer-events-none opacity-0"
-            : "opacity-100"
-        }`}
-        aria-label="Map quick controls"
-      >
-        <div className="flex w-full flex-col items-end gap-3">
-          <button
-            type="button"
-            onClick={handleUseCurrentLocation}
-            disabled={isLocating}
-            className="flex h-12 w-12 items-center justify-center self-end rounded-full bg-white/95 text-slate-800 shadow-xl shadow-slate-900/15 ring-1 ring-slate-200/80 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
-            aria-label="Use current location"
-            title="Use current location"
-          >
-            {isLocating ? (
-              <span className="flex h-5 w-5 items-center justify-center text-sm font-black">
-                …
-              </span>
-            ) : (
-              <IconLocate className="h-5 w-5" />
-            )}
-          </button>
-
-          {/* Mobile: compact round button */}
-          <button
-            type="button"
-            onClick={handleFindNearestEvent}
-            disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
-            className="flex h-12 w-12 items-center justify-center self-end rounded-full bg-gradient-to-br from-pink-500 via-rose-500 to-orange-400 text-xl shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 lg:hidden"
-            aria-label="Find nearest event"
-            title="Find nearest event"
-          >
-            {isFindingNearest ? (
-              <span className="text-sm font-black text-white">…</span>
-            ) : (
-              <span>✨</span>
-            )}
-          </button>
-
-          {/* Desktop: full labeled pill */}
-          <button
-            type="button"
-            onClick={handleFindNearestEvent}
-            disabled={isFindingNearest || isLoadingEvents || filteredEvents.length === 0}
-            className="group hidden items-center justify-end gap-2 self-end rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-xl shadow-rose-900/25 ring-4 ring-white/90 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 lg:flex"
-            aria-label="Find nearest event"
-            title="Find nearest event"
-          >
-            <span className="transition group-hover:rotate-12">✨</span>
-            <span>{isFindingNearest ? "Finding..." : "Nearest"}</span>
-          </button>
+      {/* Error toasts — right side, clear of controls */}
+      {(authError || locationError) && (
+        <div className="absolute right-4 top-[10rem] z-[25] flex flex-col items-end gap-2 lg:top-[16rem]">
+          {authError && (
+            <div className="max-w-56 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
+              {authError}
+            </div>
+          )}
+          {locationError && (
+            <div className="max-w-64 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm text-red-600 shadow-lg backdrop-blur">
+              {locationError}
+            </div>
+          )}
         </div>
-
-        {authError && (
-          <div className="max-w-56 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
-            {authError}
-          </div>
-        )}
-
-        {locationError && (
-          <div className="max-w-64 rounded-2xl bg-white/95 px-4 py-2 text-right text-sm text-red-600 shadow-lg backdrop-blur">
-            {locationError}
-          </div>
-        )}
-      </div>
+      )}
 
       {!isLoadingEvents && displayedEvents.length === 0 && <EmptyState />}
 
@@ -767,12 +812,40 @@ export default function MapHomePage() {
               onQueryChange={handleQueryChange}
               onFilterClick={() => setIsFilterOpen((isOpen) => !isOpen)}
               onSearchSubmit={handleSearchLocation}
+              onSelectSuggestion={handleSelectAddressSuggestion}
               isSearchingLocation={isSearchingLocation}
               activeFilterSummary={activeFilterSummary}
             />
           </div>
 
-          {/* Mobile category chips — horizontal scroll row, hidden on desktop */}
+          {/* Mobile-only chips (desktop chips live inside EventListPanel) */}
+          <div className="lg:hidden">
+            <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4">
+              {quickChips.map(({ label, active, onSelect }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={onSelect}
+                  className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
+                    active
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white/90 text-slate-600 hover:border-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-4 text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">{contextLabel}</span>
+              <span>·</span>
+              <span>{displayedEvents.length} event{displayedEvents.length !== 1 ? "s" : ""}</span>
+              {freeCount > 0 && <><span>·</span><span>{freeCount} free</span></>}
+              {nearCount > 0 && <><span>·</span><span>{nearCount} near you</span></>}
+            </div>
+          </div>
+
+          {/* Mobile category chips */}
           <div className="lg:hidden">
             <MobileCategoryChips
               selectedCategory={selectedCategory}
@@ -851,6 +924,12 @@ export default function MapHomePage() {
             ? handleShowAllEvents
             : undefined
         }
+        quickChips={quickChips}
+        contextLabel={contextLabel}
+        eventCount={displayedEvents.length}
+        freeCount={freeCount}
+        nearCount={nearCount}
+        authSession={authSession}
       />
 
       <MobileEventListSheet
@@ -865,6 +944,7 @@ export default function MapHomePage() {
             : undefined
         }
         isHidden={Boolean(selectedEvent)}
+        authSession={authSession}
       />
 
       {selectedEvent && (
