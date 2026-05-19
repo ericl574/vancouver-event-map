@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
 import { inferEventSubcategories } from "../utils/categoryTaxonomyUtils";
@@ -50,12 +50,28 @@ export default function EventPreviewCard({
   const [isSaved, setIsSaved] = useState(false);
   const [isCalendarMenuOpen, setIsCalendarMenuOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(variant === "detail");
+  const [mobileSheetState, setMobileSheetState] = useState("compact");
+  const [isMobileLayout, setIsMobileLayout] = useState(
+    () => window.matchMedia("(max-width: 1023px)").matches
+  );
+  const mobileDragRef = useRef(null);
+  const hasMobileDraggedRef = useRef(false);
+  const [mobileDragY, setMobileDragY] = useState(0);
+  const [isMobileDragging, setIsMobileDragging] = useState(false);
 
   const isDetailVariant = variant === "detail";
 
   useEffect(() => {
     setIsDetailsOpen(isDetailVariant);
+    setMobileSheetState("compact");
   }, [event?.id, isDetailVariant]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const handler = (e) => setIsMobileLayout(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     if (!event?.id) {
@@ -73,9 +89,25 @@ export default function EventPreviewCard({
   const eventSubcategories = inferEventSubcategories(event);
   const eventUrl = getEventUrl(event);
 
+  // Mobile: flex-col so the header is always visible; desktop: plain scrolling block
   const sectionClassName = isDetailVariant
     ? "relative h-full w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl shadow-slate-900/10"
-    : "absolute inset-x-0 bottom-0 z-40 max-h-[56dvh] overflow-y-auto rounded-t-3xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-2xl lg:left-auto lg:max-h-[72vh] lg:pb-4 lg:right-6 lg:w-96 lg:rounded-3xl";
+    : "absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl will-change-transform lg:block lg:overflow-y-auto lg:max-h-[72vh] lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
+
+  // Applied only on mobile to drive the compact/full height + live drag feedback
+  const mobileSheetStyle =
+    isMobileLayout && !isDetailVariant
+      ? {
+          maxHeight: mobileSheetState === "full" ? "88dvh" : "56dvh",
+          transition: isMobileDragging
+            ? "none"
+            : "max-height 0.3s ease-out, transform 0.3s ease-out",
+          transform:
+            isMobileDragging && mobileDragY > 0
+              ? `translateY(${mobileDragY}px)`
+              : undefined,
+        }
+      : {};
 
   const descriptionClassName = isDetailVariant
     ? "mt-4 text-sm leading-6 text-slate-600"
@@ -272,274 +304,371 @@ ${event.price}`;
     return date.toISOString().replace(/[-:]|\.\d{3}/g, "");
   }
 
+  // --- Mobile drag handlers on the header strip ---
+
+  function onMobileDragPointerDown(e) {
+    if (e.button && e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    mobileDragRef.current = { startY: e.clientY, state: mobileSheetState };
+    hasMobileDraggedRef.current = false;
+    setMobileDragY(0);
+    setIsMobileDragging(false);
+  }
+
+  function onMobileDragPointerMove(e) {
+    if (!mobileDragRef.current) return;
+    const delta = e.clientY - mobileDragRef.current.startY;
+    if (Math.abs(delta) > 8) {
+      hasMobileDraggedRef.current = true;
+      setIsMobileDragging(true);
+    }
+    if (hasMobileDraggedRef.current) setMobileDragY(delta);
+  }
+
+  function onMobileDragPointerUp(e) {
+    if (!mobileDragRef.current) return;
+    const delta = e.clientY - mobileDragRef.current.startY;
+    const wasState = mobileDragRef.current.state;
+    mobileDragRef.current = null;
+    setIsMobileDragging(false);
+    setMobileDragY(0);
+
+    if (!hasMobileDraggedRef.current) return; // tap: no drag action
+
+    if (wasState === "compact") {
+      if (delta > 60) {
+        onClose?.(); // drag down = dismiss, back to list
+      } else if (delta < -50) {
+        setMobileSheetState("full");
+        setIsDetailsOpen(true);
+      }
+    } else {
+      if (delta > 50) {
+        setMobileSheetState("compact");
+        setIsDetailsOpen(false);
+      }
+    }
+  }
+
   return (
-    <section className={sectionClassName}>
+    <section className={sectionClassName} style={mobileSheetStyle}>
+      {/*
+        Mobile-only header — always visible as a flex shrink-0 child.
+        It never scrolls away because the content below is the scrollable flex-1 body.
+        Desktop: this is lg:hidden; the section itself handles padding and scrolling.
+      */}
       {!isDetailVariant && (
-        <div className="mb-3 flex items-center lg:hidden">
-          <div className="flex-1" />
-          <div className="h-1.5 w-12 rounded-full bg-slate-300" />
-          <div className="flex flex-1 justify-end">
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500 transition hover:bg-slate-200"
-                aria-label="Close event preview"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
-              <CategoryIcon icon={category.icon} className="h-4 w-4" />
-            </span>
-
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {category.label}
-            </span>
-          </div>
-
-          <h2
-            className={`font-bold text-slate-950 ${
-              isDetailVariant ? "text-3xl leading-tight" : "text-xl"
-            }`}
-          >
-            {event.title}
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            {event.venue} · {event.area}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleToggleSaveEvent}
-          className={`rounded-full border p-2 transition ${
-            isSaved
-              ? "border-pink-200 bg-pink-50 text-pink-600 hover:bg-pink-100"
-              : "border-slate-200 text-slate-700 hover:bg-slate-50"
-          }`}
-          aria-label={isSaved ? "Remove saved event" : "Save event"}
-          title={isSaved ? "Remove saved event" : "Save event"}
-        >
-          <IconBookmark
-            className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`}
-          />
-        </button>
-      </div>
-
-      <p className={descriptionClassName}>
-        {event.description || "No description provided."}
-      </p>
-
-      {eventSubcategories.length > 0 && (isDetailVariant || isDetailsOpen) && (
-        <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
-            Event analysis
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {eventSubcategories.map((subcategory) => (
-              <span
-                key={subcategory.id}
-                className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-600 ring-1 ring-pink-100"
-              >
-                {subcategory.label}
-              </span>
-            ))}
-          </div>
-          <p className="mt-2 text-xs leading-5 text-slate-500">
-            Inferred from the event title, description, venue, and tags.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-        <div className="rounded-2xl bg-slate-100 p-3">
-          <p className="text-xs text-slate-500">Date</p>
-          <p className="font-semibold">{event.date || "TBA"}</p>
-        </div>
-
-        <div className="rounded-2xl bg-slate-100 p-3">
-          <p className="text-xs text-slate-500">Time</p>
-          <p className="font-semibold">{event.startTime || "TBA"}</p>
-        </div>
-
-        <div className="rounded-2xl bg-slate-100 p-3">
-          <p className="text-xs text-slate-500">Price</p>
-          <p className="font-semibold">{event.price || "TBA"}</p>
-        </div>
-      </div>
-
-      {isDetailsOpen && (
         <div
-          className={`mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 ${
-            isDetailVariant ? "p-4" : "p-3"
-          }`}
+          className="shrink-0 flex flex-col items-center border-b border-slate-100 bg-white px-4 pt-3 pb-2 lg:hidden"
+          style={{ touchAction: isMobileLayout ? "none" : undefined }}
+          onPointerDown={isMobileLayout ? onMobileDragPointerDown : undefined}
+          onPointerMove={isMobileLayout ? onMobileDragPointerMove : undefined}
+          onPointerUp={isMobileLayout ? onMobileDragPointerUp : undefined}
+          onPointerCancel={
+            isMobileLayout ? onMobileDragPointerUp : undefined
+          }
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
-              Event details
-            </h3>
+          {/* Drag pill */}
+          <div className="mb-2.5 h-1.5 w-12 rounded-full bg-slate-300" />
 
+          {/* Back + Close row */}
+          <div className="flex w-full items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition active:bg-slate-200"
+              aria-label="Back to events list"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-3.5 w-3.5"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Back to events
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500 transition active:bg-slate-200"
+              aria-label="Close event preview"
+            >
+              ✕
+            </button>
           </div>
-
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
-            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Venue
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-800">
-                {event.venue || "Not provided"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Area
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-800">
-                {event.area || event.city || "Not provided"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
-              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Address
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-800">
-                {event.address || "No address provided"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Start
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-800">
-                {event.event_date || event.date || "TBA"} ·{" "}
-                {event.startTime || event.start_time || "TBA"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                End
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-800">
-                {event.endTime || event.end_time || "TBA"}
-              </dd>
-            </div>
-
-            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
-              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Organizer
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-800">
-                {event.organizerName || "Not provided"}
-              </dd>
-            </div>
-          </dl>
-
-          {event.tags?.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Tags
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {event.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-100"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
         </div>
       )}
 
-      {(shareMessage || saveMessage) && (
-        <p
-          className={`mt-3 rounded-2xl px-3 py-2 text-center text-xs font-semibold ${
-            saveMessage
-              ? "bg-pink-50 text-pink-700"
-              : "bg-rose-50 text-rose-700"
-          }`}
-        >
-          {saveMessage || shareMessage}
-        </p>
-      )}
+      {/*
+        Scrollable content body.
+        Mobile: flex-1 min-h-0 overflow-y-auto — grows to fill available space below header.
+        Desktop: lg:overflow-visible lg:p-4 — section handles overflow & padding.
+      */}
+      <div
+        className={
+          isDetailVariant
+            ? undefined
+            : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] lg:overflow-visible lg:p-4 lg:pb-4"
+        }
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                <CategoryIcon icon={category.icon} className="h-4 w-4" />
+              </span>
 
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setIsDetailsOpen((isOpen) => !isOpen)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          {isDetailsOpen ? "Hide Details" : "View Details"}
-        </button>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {category.label}
+              </span>
+            </div>
 
-        {eventUrl && (
-          <a
-            href={eventUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
-          >
-            Tickets
-          </a>
-        )}
+            <h2
+              className={`font-bold text-slate-950 ${
+                isDetailVariant ? "text-3xl leading-tight" : "text-xl"
+              }`}
+            >
+              {event.title}
+            </h2>
 
-        <div className="relative">
+            <p className="mt-1 text-sm text-slate-500">
+              {event.venue} · {event.area}
+            </p>
+          </div>
+
           <button
             type="button"
-            onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
-            className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-            aria-label="Add to calendar"
-            title="Add to calendar"
+            onClick={handleToggleSaveEvent}
+            className={`rounded-full border p-2 transition ${
+              isSaved
+                ? "border-pink-200 bg-pink-50 text-pink-600 hover:bg-pink-100"
+                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+            aria-label={isSaved ? "Remove saved event" : "Save event"}
+            title={isSaved ? "Remove saved event" : "Save event"}
           >
-            <IconCalendarPlus className="h-5 w-5" />
+            <IconBookmark
+              className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`}
+            />
           </button>
-
-          {isCalendarMenuOpen && (
-            <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
-              <button
-                type="button"
-                onClick={handleAddToGoogleCalendar}
-                className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
-              >
-                Google Calendar
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadCalendarFile}
-                className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
-              >
-                Computer Calendar (.ics)
-              </button>
-            </div>
-          )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleShareEvent}
-          className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-          aria-label="Share event"
-        >
-          <IconShare className="h-5 w-5" />
-        </button>
+        <p className={descriptionClassName}>
+          {event.description || "No description provided."}
+        </p>
+
+        {eventSubcategories.length > 0 && (isDetailVariant || isDetailsOpen) && (
+          <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
+              Event analysis
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {eventSubcategories.map((subcategory) => (
+                <span
+                  key={subcategory.id}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-600 ring-1 ring-pink-100"
+                >
+                  {subcategory.label}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Inferred from the event title, description, venue, and tags.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+          <div className="rounded-2xl bg-slate-100 p-3">
+            <p className="text-xs text-slate-500">Date</p>
+            <p className="font-semibold">{event.date || "TBA"}</p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-100 p-3">
+            <p className="text-xs text-slate-500">Time</p>
+            <p className="font-semibold">{event.startTime || "TBA"}</p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-100 p-3">
+            <p className="text-xs text-slate-500">Price</p>
+            <p className="font-semibold">{event.price || "TBA"}</p>
+          </div>
+        </div>
+
+        {isDetailsOpen && (
+          <div
+            className={`mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 ${
+              isDetailVariant ? "p-4" : "p-3"
+            }`}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
+                Event details
+              </h3>
+            </div>
+
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Venue
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {event.venue || "Not provided"}
+                </dd>
+              </div>
+
+              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Area
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {event.area || event.city || "Not provided"}
+                </dd>
+              </div>
+
+              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Address
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {event.address || "No address provided"}
+                </dd>
+              </div>
+
+              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Start
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {event.event_date || event.date || "TBA"} ·{" "}
+                  {event.startTime || event.start_time || "TBA"}
+                </dd>
+              </div>
+
+              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  End
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {event.endTime || event.end_time || "TBA"}
+                </dd>
+              </div>
+
+              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Organizer
+                </dt>
+                <dd className="mt-1 font-semibold text-slate-800">
+                  {event.organizerName || "Not provided"}
+                </dd>
+              </div>
+            </dl>
+
+            {event.tags?.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Tags
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {event.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-100"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(shareMessage || saveMessage) && (
+          <p
+            className={`mt-3 rounded-2xl px-3 py-2 text-center text-xs font-semibold ${
+              saveMessage
+                ? "bg-pink-50 text-pink-700"
+                : "bg-rose-50 text-rose-700"
+            }`}
+          >
+            {saveMessage || shareMessage}
+          </p>
+        )}
+
+        <div className="mt-4 flex gap-2">
+          {/* Desktop only: View Details toggle */}
+          <button
+            type="button"
+            onClick={() => setIsDetailsOpen((isOpen) => !isOpen)}
+            className="hidden flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 lg:flex"
+          >
+            {isDetailsOpen ? "Hide Details" : "View Details"}
+          </button>
+
+          {/* Mobile: drag up on the header to expand; View Details hidden */}
+
+          {eventUrl && (
+            <a
+              href={eventUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
+            >
+              Tickets
+            </a>
+          )}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
+              className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+              aria-label="Add to calendar"
+              title="Add to calendar"
+            >
+              <IconCalendarPlus className="h-5 w-5" />
+            </button>
+
+            {isCalendarMenuOpen && (
+              <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
+                <button
+                  type="button"
+                  onClick={handleAddToGoogleCalendar}
+                  className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                >
+                  Google Calendar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadCalendarFile}
+                  className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
+                >
+                  Computer Calendar (.ics)
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleShareEvent}
+            className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            aria-label="Share event"
+          >
+            <IconShare className="h-5 w-5" />
+          </button>
+        </div>
       </div>
     </section>
   );

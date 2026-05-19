@@ -10,7 +10,7 @@ const INITIAL_MAP_ZOOM = 10.9;
 const USER_LOCATION_ZOOM = 14.6;
 const EVENT_FOCUS_ZOOM = 14.6;
 const MAP_PITCH = 56;
-const MAP_BEARING = -18;
+const MAP_BEARING = 0;
 
 const EVENT_SOURCE_ID = "event-points";
 
