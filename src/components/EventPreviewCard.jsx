@@ -422,18 +422,17 @@ ${event.price}`;
             : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] lg:overflow-visible lg:p-4 lg:pb-4"
         }
       >
+        {/* Category icon + label + title + venue + bookmark */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
                 <CategoryIcon icon={category.icon} className="h-4 w-4" />
               </span>
-
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {category.label}
               </span>
             </div>
-
             <h2
               className={`font-bold text-slate-950 ${
                 isDetailVariant ? "text-3xl leading-tight" : "text-xl"
@@ -441,16 +440,14 @@ ${event.price}`;
             >
               {event.title}
             </h2>
-
             <p className="mt-1 text-sm text-slate-500">
               {event.venue} · {event.area}
             </p>
           </div>
-
           <button
             type="button"
             onClick={handleToggleSaveEvent}
-            className={`rounded-full border p-2 transition ${
+            className={`shrink-0 rounded-full border p-2 transition ${
               isSaved
                 ? "border-pink-200 bg-pink-50 text-pink-600 hover:bg-pink-100"
                 : "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -458,137 +455,105 @@ ${event.price}`;
             aria-label={isSaved ? "Remove saved event" : "Save event"}
             title={isSaved ? "Remove saved event" : "Save event"}
           >
-            <IconBookmark
-              className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`}
-            />
+            <IconBookmark className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`} />
           </button>
         </div>
 
+        {/* Description */}
         <p className={descriptionClassName}>
           {event.description || "No description provided."}
         </p>
 
+        {/* Event analysis */}
         {eventSubcategories.length > 0 && (
           <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
               Event analysis
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {eventSubcategories.map((subcategory) => (
+              {eventSubcategories.map((sub) => (
                 <span
-                  key={subcategory.id}
+                  key={sub.id}
                   className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-600 ring-1 ring-pink-100"
                 >
-                  {subcategory.label}
+                  {sub.label}
                 </span>
               ))}
             </div>
           </div>
         )}
 
+        {/* Date / Time / Price grid */}
         <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
           <div className="rounded-2xl bg-slate-100 p-3">
             <p className="text-xs text-slate-500">Date</p>
             <p className="font-semibold">{event.date || "TBA"}</p>
           </div>
-
           <div className="rounded-2xl bg-slate-100 p-3">
             <p className="text-xs text-slate-500">Time</p>
             <p className="font-semibold">{event.startTime || "TBA"}</p>
           </div>
-
           <div className="rounded-2xl bg-slate-100 p-3">
             <p className="text-xs text-slate-500">Price</p>
             <p className="font-semibold">{event.price || "TBA"}</p>
           </div>
         </div>
 
+        {/* Event details */}
         <div
           className={`mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 ${
             isDetailVariant ? "p-4" : "p-3"
           }`}
         >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
-                Event details
-              </h3>
-            </div>
-
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Venue
-                </dt>
-                <dd className="mt-1 font-semibold text-slate-800">
-                  {event.venue || "Not provided"}
-                </dd>
-              </div>
-
-              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Area
-                </dt>
-                <dd className="mt-1 font-semibold text-slate-800">
-                  {event.area || event.city || "Not provided"}
-                </dd>
-              </div>
-
-              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
-                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Address
-                </dt>
-                <dd className="mt-1 font-semibold text-slate-800">
-                  {event.address || "No address provided"}
-                </dd>
-              </div>
-
-              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Start
-                </dt>
-                <dd className="mt-1 font-semibold text-slate-800">
-                  {event.event_date || event.date || "TBA"} ·{" "}
-                  {event.startTime || event.start_time || "TBA"}
-                </dd>
-              </div>
-
-              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
-                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  End
-                </dt>
-                <dd className="mt-1 font-semibold text-slate-800">
-                  {event.endTime || event.end_time || "TBA"}
-                </dd>
-              </div>
-
-              <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
-                <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Organizer
-                </dt>
-                <dd className="mt-1 font-semibold text-slate-800">
-                  {event.organizerName || "Not provided"}
-                </dd>
-              </div>
-            </dl>
-
-            {event.tags?.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Tags
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {event.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-100"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">
+              Event details
+            </h3>
           </div>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">Venue</dt>
+              <dd className="mt-1 font-semibold text-slate-800">{event.venue || "Not provided"}</dd>
+            </div>
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">Area</dt>
+              <dd className="mt-1 font-semibold text-slate-800">{event.area || event.city || "Not provided"}</dd>
+            </div>
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">Address</dt>
+              <dd className="mt-1 font-semibold text-slate-800">{event.address || "No address provided"}</dd>
+            </div>
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">Start</dt>
+              <dd className="mt-1 font-semibold text-slate-800">
+                {event.event_date || event.date || "TBA"} · {event.startTime || event.start_time || "TBA"}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">End</dt>
+              <dd className="mt-1 font-semibold text-slate-800">{event.endTime || event.end_time || "TBA"}</dd>
+            </div>
+            <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-100 sm:col-span-2">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">Organizer</dt>
+              <dd className="mt-1 font-semibold text-slate-800">{event.organizerName || "Not provided"}</dd>
+            </div>
+          </dl>
+          {event.tags?.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Tags</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {event.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-100"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {saveMessage && (
           <p className="mt-3 rounded-2xl bg-pink-50 px-3 py-2 text-center text-xs font-semibold text-pink-700">
@@ -596,6 +561,7 @@ ${event.price}`;
           </p>
         )}
 
+        {/* Bottom actions */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"
@@ -627,7 +593,6 @@ ${event.price}`;
                 >
                   Google Calendar
                 </button>
-
                 <button
                   type="button"
                   onClick={handleDownloadCalendarFile}

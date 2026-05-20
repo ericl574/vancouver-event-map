@@ -9,6 +9,7 @@ import MobileEventListSheet from "../components/MobileEventListSheet";
 import MobileCategoryChips from "../components/MobileCategoryChips";
 import CategoryExplorePanel from "../components/CategoryExplorePanel";
 import SearchBar from "../components/SearchBar";
+import { IconMoon, IconCalendar, IconZap, IconLocate } from "../components/Icons";
 import { getCurrentSession, signOutUser } from "../services/authService";
 import { getApprovedEvents } from "../services/eventService";
 import { geocodeAddress } from "../services/geocodingService";
@@ -626,6 +627,7 @@ export default function MapHomePage() {
   const quickChips = [
     {
       label: "Tonight",
+      icon: IconMoon,
       active: filters.timeRange === "24h" && !filters.startDate,
       onSelect: () =>
         filters.timeRange === "24h" && !filters.startDate
@@ -634,6 +636,7 @@ export default function MapHomePage() {
     },
     {
       label: "This Weekend",
+      icon: IconCalendar,
       active: Boolean(isWeekendFilter),
       onSelect: () =>
         isWeekendFilter
@@ -642,12 +645,14 @@ export default function MapHomePage() {
     },
     {
       label: "Free",
+      icon: IconZap,
       active: selectedCategory === "free",
       onSelect: () =>
         handleSelectCategory(selectedCategory === "free" ? "all" : "free"),
     },
     {
       label: "Near Me",
+      icon: IconLocate,
       active: Boolean(nearestEvent),
       onSelect: () => {
         if (nearestEvent) {
@@ -821,17 +826,18 @@ export default function MapHomePage() {
           {/* Mobile-only chips (desktop chips live inside EventListPanel) */}
           <div className="lg:hidden">
             <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4">
-              {quickChips.map(({ label, active, onSelect }) => (
+              {quickChips.map(({ label, icon: Icon, active, onSelect }) => (
                 <button
                   key={label}
                   type="button"
                   onClick={onSelect}
-                  className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
                     active
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-white/90 text-slate-600 hover:border-slate-400 hover:text-slate-900"
+                      ? "border-pink-500 bg-pink-500 text-white"
+                      : "border-slate-200 bg-white/90 text-slate-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600"
                   }`}
                 >
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
                   {label}
                 </button>
               ))}
