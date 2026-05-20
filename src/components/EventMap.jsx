@@ -1375,7 +1375,7 @@ export default function EventMap({
       </section>
 
       {isMapReady && (
-        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-1.5 lg:top-[4.5rem]">
+        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-3 lg:top-[4.5rem]">
           {/* Locate */}
           <button
             type="button"

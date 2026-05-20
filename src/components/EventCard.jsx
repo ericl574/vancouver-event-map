@@ -159,19 +159,29 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
             </div>
           </div>
 
-          {/* Right: category + title + tags */}
+          {/* Right: category + title + meta + tags */}
           <div className="min-w-0 flex-1 pb-2 pr-3 pt-3">
             <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: category.hex }}>
               {category.label}
             </div>
 
-            <h3 className="mt-1 line-clamp-3 text-sm font-bold leading-snug text-slate-950">
+            <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug text-slate-950">
               {event.title}
             </h3>
 
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              {[event.venue, event.area].filter(Boolean).join(" · ")}
+            </p>
+
+            {(event.date || event.startTime || event.price) && (
+              <p className="mt-0.5 truncate text-[10px] text-slate-600">
+                {[event.date, event.startTime, event.price].filter(Boolean).join(" · ")}
+              </p>
+            )}
+
             {eventSubcategories.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {eventSubcategories.slice(0, 3).map((sub) => (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {eventSubcategories.slice(0, 2).map((sub) => (
                   <span key={sub.id} className="rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink-600 ring-1 ring-pink-100">
                     {sub.label}
                   </span>
@@ -241,9 +251,9 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
       onKeyDown={(e) => e.key === "Enter" && onClick(event)}
       className="w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white/95 text-left transition hover:border-slate-300 hover:bg-slate-50"
     >
-      <div className="flex items-stretch">
-        {/* Thumbnail — width fixed, height stretches to match text block */}
-        <div className="relative m-2 w-[72px] shrink-0 self-stretch overflow-hidden rounded-2xl bg-slate-100">
+      <div className="flex items-start">
+        {/* Thumbnail — true square sized so image height drives card height */}
+        <div className="relative m-2 h-[108px] w-[108px] shrink-0 overflow-hidden rounded-2xl bg-slate-100">
           {event.imageUrl ? (
             <img
               src={event.imageUrl}
@@ -259,46 +269,40 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
               style={{ backgroundColor: `${category.hex}18` }}
             >
               <span style={{ color: category.hex }}>
-                <CategoryIcon icon={category.icon} className="h-5 w-5" />
+                <CategoryIcon icon={category.icon} className="h-7 w-7" />
               </span>
             </div>
           )}
         </div>
 
-        {/* Text */}
-        <div className="min-w-0 flex-1 px-3 py-2">
-          <div className="mb-0.5 text-xs font-bold uppercase tracking-wider" style={{ color: category.hex || "#64748b" }}>
+        {/* Text — all meta at text-[10px] to fit within image height */}
+        <div className="min-w-0 flex-1 py-2 pl-2 pr-1">
+          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: category.hex || "#64748b" }}>
             {category.label}
           </div>
 
-          <h3 className="line-clamp-2 text-base font-semibold leading-snug text-slate-900">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
             {event.title}
           </h3>
 
-          <p className="mt-0.5 truncate text-sm text-slate-500">
+          <p className="mt-0.5 truncate text-[10px] text-slate-500">
             {[event.venue, event.area].filter(Boolean).join(" · ")}
           </p>
 
           {(event.date || event.startTime || event.price) && (
-            <p className="mt-0.5 text-sm text-slate-600">
+            <p className="mt-0.5 truncate text-[10px] text-slate-600">
               {[event.date, event.startTime, event.price].filter(Boolean).join(" · ")}
             </p>
           )}
 
           {eventSubcategories.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
+            <div className="mt-0.5 flex flex-wrap gap-1">
               {eventSubcategories.slice(0, 2).map((sub) => (
-                <span key={sub.id} className="rounded-full bg-pink-50 px-1.5 py-0.5 text-xs font-bold text-pink-600 ring-1 ring-pink-100">
+                <span key={sub.id} className="rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-bold text-pink-600 ring-1 ring-pink-100">
                   {sub.label}
                 </span>
               ))}
             </div>
-          )}
-
-          {event.distanceKm !== undefined && (
-            <p className="mt-0.5 text-xs font-medium text-slate-400">
-              {event.distanceKm.toFixed(1)} km away
-            </p>
           )}
         </div>
 
