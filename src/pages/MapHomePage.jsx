@@ -806,7 +806,7 @@ export default function MapHomePage() {
           )}
 
           {/* Search bar: full width on mobile, fixed width left-aligned on desktop */}
-          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[360px] lg:px-0">
+          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[396px] lg:px-0">
             <SearchBar
               query={query}
               onQueryChange={handleQueryChange}

@@ -44,10 +44,10 @@ export default function EventListPanel({
 
   return (
     <div
-      className={`absolute bottom-4 left-5 top-[8.5rem] z-40 hidden w-[360px] transition-all duration-300 ease-out lg:block ${
+      className={`absolute bottom-4 left-5 top-[8.5rem] z-40 hidden w-[396px] transition-all duration-300 ease-out lg:block ${
         isOpen
           ? "translate-x-0 opacity-100"
-          : "-translate-x-[390px] opacity-100"
+          : "-translate-x-[426px] opacity-100"
       }`}
     >
       <aside className="relative flex h-full flex-col rounded-[28px] border border-slate-200/60 bg-white/97 shadow-2xl shadow-slate-900/12 backdrop-blur-xl">

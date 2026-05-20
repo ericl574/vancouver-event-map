@@ -68,6 +68,10 @@ Specific reference details the client expects:
 - In the event list cards, use available panel space to make thumbnails visibly wider when there is room. Event images should be useful visual signals, not tiny slivers.
 - Preserve original/comfortable event card sizing when the client says the size should remain as before. Do not enlarge thumbnails or panels beyond the intended design balance without explicit approval.
 - The event list panel and search bar should match the current time filter panel width/size when the client asks for consistent sizing. Use the filter panel as the sizing reference for desktop left-side surfaces.
+- When the client says event images can be larger without changing list size, keep the panel/search/filter widths unchanged and reallocate space inside event cards by widening thumbnails and moving/compressing text/actions as needed.
+- When the client asks to make the list wider without changing image size, increase the event list/search/filter width consistently but keep event thumbnail dimensions unchanged. Allocate the added width to text/action breathing room.
+- The event list typography may be increased by one step when the client asks, but verify text still fits cleanly and cards remain scannable.
+- If the client asks to decrease the details part in a preview/list card, reduce only the metadata/detail lines such as venue, area, date, time, and price by one text size. Do not shrink the title unless explicitly requested.
 - Every visible feature or control must be enabled and tested. If a button, chip, map control, save/share/calendar action, ticket action, or detail action is visible, it must either work or be clearly disabled with a reason.
 - Top navigation buttons must work and be tested: category tabs, Saved, account/login, and any visible account/menu controls. Do not leave visible top-nav buttons as dead UI.
 - Keep Save/Share/Add to Calendar/Tickets actions available in the event list, but only show the compact action row for the selected/clicked event card when the client asks for a cleaner list. Unselected list cards should stay focused on scanning.

@@ -253,7 +253,7 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
     >
       <div className="flex items-stretch min-h-[68px]">
         {/* Thumbnail */}
-        <div className="relative shrink-0 w-[72px] overflow-hidden">
+        <div className="relative shrink-0 w-[84px] overflow-hidden">
           {event.imageUrl ? (
             <img
               src={event.imageUrl}
@@ -279,20 +279,20 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
 
         {/* Text + actions */}
         <div className="min-w-0 flex-1 px-3 py-2">
-          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: category.hex || "#64748b" }}>
+          <div className="mb-0.5 text-xs font-bold uppercase tracking-wider" style={{ color: category.hex || "#64748b" }}>
             {category.label}
           </div>
 
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+          <h3 className="line-clamp-2 text-base font-semibold leading-snug text-slate-900">
             {event.title}
           </h3>
 
-          <p className="mt-0.5 truncate text-xs text-slate-500">
+          <p className="mt-0.5 truncate text-sm text-slate-500">
             {[event.venue, event.area].filter(Boolean).join(" · ")}
           </p>
 
           {(event.date || event.startTime || event.price) && (
-            <p className="mt-0.5 text-xs text-slate-600">
+            <p className="mt-0.5 text-sm text-slate-600">
               {[event.date, event.startTime, event.price].filter(Boolean).join(" · ")}
             </p>
           )}
@@ -300,7 +300,7 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
           {eventSubcategories.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {eventSubcategories.slice(0, 2).map((sub) => (
-                <span key={sub.id} className="rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-bold text-pink-600 ring-1 ring-pink-100">
+                <span key={sub.id} className="rounded-full bg-pink-50 px-1.5 py-0.5 text-xs font-bold text-pink-600 ring-1 ring-pink-100">
                   {sub.label}
                 </span>
               ))}
@@ -308,7 +308,7 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
           )}
 
           {event.distanceKm !== undefined && (
-            <p className="mt-0.5 text-[10px] font-medium text-slate-400">
+            <p className="mt-0.5 text-xs font-medium text-slate-400">
               {event.distanceKm.toFixed(1)} km away
             </p>
           )}
