@@ -890,23 +890,11 @@ export default function MapHomePage() {
             </div>
           )}
 
-          {(nearestEvent || nearestError) && (
+          {nearestError && (
             <div className="pointer-events-none fixed left-1/2 top-48 z-50 -translate-x-1/2 lg:top-[8.5rem]">
-              {nearestEvent && Number.isFinite(nearestEvent.distanceKm) && (
-                <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-lg backdrop-blur">
-                  Nearest:{" "}
-                  <span className="text-pink-600">{nearestEvent.title}</span>
-                  <span className="ml-1 text-slate-500">
-                    · {nearestEvent.distanceKm.toFixed(1)} km away
-                  </span>
-                </div>
-              )}
-
-              {nearestError && (
-                <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
-                  {nearestError}
-                </div>
-              )}
+              <div className="rounded-2xl bg-white/95 px-5 py-2.5 text-center text-sm font-semibold text-red-600 shadow-lg backdrop-blur">
+                {nearestError}
+              </div>
             </div>
           )}
         </div>

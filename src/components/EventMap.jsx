@@ -34,6 +34,21 @@ const EVENT_SELECTED_CLUSTER_COUNT_LAYER_ID = "event-selected-cluster-count";
 
 const MAP_CATEGORY_ICON_SIZE = 24;
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Returns true when the fill is light enough that a white icon would be unreadable.
+function isLightColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 186;
+}
+
 function normalizeLocationText(value) {
   return String(value || "")
     .toLowerCase()
@@ -498,14 +513,21 @@ function createCountBadgeImage(count, isSelected = false) {
   context.fillStyle = isSelected ? "#FCA5B0" : "#FEDEE1";
   context.fill();
 
-  // White border
+  // Pink-tinted outer ring
   context.lineWidth = strokeWidth;
-  context.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  context.strokeStyle = isSelected ? "rgba(212, 0, 90, 0.85)" : "rgba(244, 78, 134, 0.85)";
+  context.stroke();
+
+  // White inner circle line — flush against the inner edge of the pink ring
+  context.beginPath();
+  context.arc(center, center, radius - strokeWidth / 2 - 0.75, 0, Math.PI * 2);
+  context.lineWidth = 1.5;
+  context.strokeStyle = "rgba(255, 255, 255, 0.85)";
   context.stroke();
 
   // Count label
   context.font = `800 ${radius >= 30 ? 16 : radius >= 24 ? 15 : 14}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.fillStyle = isSelected ? "#5D0F20" : "#8B2040";
+  context.fillStyle = isSelected ? "#8B0042" : "#C80058";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(String(clampBadgeCount(count)), center, center + 0.5);
@@ -564,9 +586,11 @@ async function createPinMarkerImage(categoryHex, iconSvg, isSelected) {
   const cy = padTop + bubbleR;
   const tipY = canvasH;
 
-  // Drop shadow
+  // Drop shadow — tinted with category color for identity; blue for selected glow
   ctx.save();
-  ctx.shadowColor = "rgba(15, 23, 42, 0.30)";
+  ctx.shadowColor = isSelected
+    ? "rgba(37, 99, 235, 0.45)"
+    : hexToRgba(categoryHex, 0.30);
   ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 4;
@@ -585,10 +609,11 @@ async function createPinMarkerImage(categoryHex, iconSvg, isSelected) {
   ctx.fillStyle = isSelected ? "#2563eb" : categoryHex;
   ctx.fill();
 
-  // Icon
+  // Icon — dark on light fills (e.g. yellow), white on saturated/dark fills; selected always white
   if (iconSvg) {
     try {
-      const coloredSvg = colorizeSvg(iconSvg, "#ffffff");
+      const iconFill = isSelected ? "#ffffff" : (isLightColor(categoryHex) ? "#111827" : "#ffffff");
+      const coloredSvg = colorizeSvg(iconSvg, iconFill);
       const iconSize = isSelected ? 20 : 16;
       const img = new Image();
       await new Promise((resolve, reject) => {
