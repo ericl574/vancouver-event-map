@@ -61,9 +61,13 @@ function useEventActions(event, authSession) {
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    if (!event?.id) { setIsSaved(false); return; }
-    const ids = readSavedEventIds(authSession);
-    setIsSaved(ids.includes(String(event.id)));
+    function sync() {
+      if (!event?.id) { setIsSaved(false); return; }
+      setIsSaved(readSavedEventIds(authSession).includes(String(event.id)));
+    }
+    sync();
+    window.addEventListener("saved-events-updated", sync);
+    return () => window.removeEventListener("saved-events-updated", sync);
   }, [event?.id, authSession?.user?.id]);
 
   function handleToggleSave(e) {
@@ -108,7 +112,7 @@ function useEventActions(event, authSession) {
   return { isSaved, handleToggleSave, handleShare, handleCalendar };
 }
 
-export default function EventCard({ event, isSelected, onClick, authSession }) {
+export default function EventCard({ event, isSelected, onClick, authSession, showActions = true }) {
   const category = getCategoryById(event.category);
   const eventSubcategories = inferEventSubcategories(event);
   const eventUrl = event.ticketUrl || event.sourceUrl || "";
@@ -122,7 +126,7 @@ export default function EventCard({ event, isSelected, onClick, authSession }) {
         tabIndex={0}
         onClick={() => onClick(event)}
         onKeyDown={(e) => e.key === "Enter" && onClick(event)}
-        className="w-full cursor-pointer overflow-hidden rounded-[20px] bg-white shadow-xl shadow-slate-900/12 ring-2 ring-pink-400/50 outline-none"
+        className="w-full cursor-pointer overflow-hidden rounded-[20px] border-2 border-pink-400 bg-white shadow-md shadow-slate-900/10 outline-none"
       >
         {/* Hero image — compact height */}
         <div className="relative h-24 w-full overflow-hidden bg-slate-100">
@@ -185,8 +189,8 @@ export default function EventCard({ event, isSelected, onClick, authSession }) {
             </div>
           )}
 
-          {/* Action strip */}
-          <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
+          {/* Action strip — hidden when showActions=false (e.g. Saved list) */}
+          {showActions && <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -234,7 +238,7 @@ export default function EventCard({ event, isSelected, onClick, authSession }) {
                 Free
               </span>
             ) : null}
-          </div>
+          </div>}
         </div>
       </div>
     );
@@ -249,7 +253,7 @@ export default function EventCard({ event, isSelected, onClick, authSession }) {
     >
       <div className="flex items-stretch min-h-[68px]">
         {/* Thumbnail */}
-        <div className="relative shrink-0 w-[64px] overflow-hidden">
+        <div className="relative shrink-0 w-[72px] overflow-hidden">
           {event.imageUrl ? (
             <img
               src={event.imageUrl}

@@ -72,13 +72,13 @@ export default function EventPreviewCard({
   }, []);
 
   useEffect(() => {
-    if (!event?.id) {
-      setIsSaved(false);
-      return;
+    function sync() {
+      if (!event?.id) { setIsSaved(false); return; }
+      setIsSaved(readSavedEventIds(authSession).includes(String(event.id)));
     }
-
-    const savedEventIds = readSavedEventIds(authSession);
-    setIsSaved(savedEventIds.includes(String(event.id)));
+    sync();
+    window.addEventListener("saved-events-updated", sync);
+    return () => window.removeEventListener("saved-events-updated", sync);
   }, [event?.id, authSession?.user?.id]);
 
   if (!event) return null;
@@ -483,9 +483,6 @@ ${event.price}`;
                 </span>
               ))}
             </div>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              Inferred from the event title, description, venue, and tags.
-            </p>
           </div>
         )}
 
@@ -599,61 +596,60 @@ ${event.price}`;
           </p>
         )}
 
-        {isDetailVariant && (
-          <div className="mt-4 flex gap-2">
-            {eventUrl && (
-              <a
-                href={eventUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-1 items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
-              >
-                Tickets
-              </a>
-            )}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={handleShareEvent}
+            className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            aria-label="Share event"
+            title="Share"
+          >
+            <IconShare className="h-5 w-5" />
+          </button>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
-                className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                aria-label="Add to calendar"
-                title="Add to calendar"
-              >
-                <IconCalendarPlus className="h-5 w-5" />
-              </button>
-
-              {isCalendarMenuOpen && (
-                <div className="absolute bottom-full right-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
-                  <button
-                    type="button"
-                    onClick={handleAddToGoogleCalendar}
-                    className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    Google Calendar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleDownloadCalendarFile}
-                    className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
-                  >
-                    Computer Calendar (.ics)
-                  </button>
-                </div>
-              )}
-            </div>
-
+          <div className="relative">
             <button
               type="button"
-              onClick={handleShareEvent}
+              onClick={() => setIsCalendarMenuOpen((isOpen) => !isOpen)}
               className="rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-              aria-label="Share event"
+              aria-label="Add to calendar"
+              title="Add to calendar"
             >
-              <IconShare className="h-5 w-5" />
+              <IconCalendarPlus className="h-5 w-5" />
             </button>
+
+            {isCalendarMenuOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-2xl shadow-slate-900/15">
+                <button
+                  type="button"
+                  onClick={handleAddToGoogleCalendar}
+                  className="block w-full px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                >
+                  Google Calendar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadCalendarFile}
+                  className="block w-full border-t border-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition hover:bg-pink-50 hover:text-pink-600"
+                >
+                  Computer Calendar (.ics)
+                </button>
+              </div>
+            )}
           </div>
-        )}
+
+          {eventUrl && (
+            <a
+              href={eventUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex flex-1 items-center justify-center rounded-2xl border border-transparent bg-pink-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/25 transition hover:bg-pink-600"
+            >
+              Tickets
+            </a>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -125,24 +125,6 @@ export default function TopNavigation({
                     </p>
                   </div>
 
-                  <a
-                    href="/favorites"
-                    className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-pink-50"
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">
-                        Favorite List
-                      </p>
-                      <p className="mt-0.5 text-xs font-medium text-slate-500">
-                        Search and manage saved events
-                      </p>
-                    </div>
-
-                    <span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-bold text-pink-600">
-                      {savedEventsCount}
-                    </span>
-                  </a>
-
                   <button
                     type="button"
                     onClick={onSignOut}

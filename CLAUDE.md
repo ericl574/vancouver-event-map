@@ -60,6 +60,7 @@ Specific reference details the client expects:
 
 - Map controls should match the reference: a locate button, separate stacked zoom `+` / `-` controls, and a `3D` toggle button.
 - Map controls should sit together near the top-right of the map, matching `ui_design.png`; do not place zoom or `3D` controls low on the right side unless the client explicitly asks.
+- Locate must be functional, not decorative. Clicking it should request/use browser geolocation, set the user location, move/focus the map, and show clear user-facing feedback if permission is denied, unavailable, or fails.
 - Search/list area should include quick-filter chips beneath the search input and within the left panel flow, below or cleanly associated with the `Events in Greater Vancouver` section. They must never overlap the list title, event count, or each other.
 - Quick-filter chips such as `Tonight`, `This Weekend`, `Free`, and `Near Me` must be toggleable/deselectable when their behavior is stateful.
 - Do not duplicate `Nearest` / `Near Me` as both a floating map button and a list/search quick chip. Prefer the quick chip in the list/search area and remove the duplicate floating Nearest button near the map controls unless explicitly requested.
@@ -68,13 +69,22 @@ Specific reference details the client expects:
 - Preserve original/comfortable event card sizing when the client says the size should remain as before. Do not enlarge thumbnails or panels beyond the intended design balance without explicit approval.
 - The event list panel and search bar should match the current time filter panel width/size when the client asks for consistent sizing. Use the filter panel as the sizing reference for desktop left-side surfaces.
 - Every visible feature or control must be enabled and tested. If a button, chip, map control, save/share/calendar action, ticket action, or detail action is visible, it must either work or be clearly disabled with a reason.
+- Top navigation buttons must work and be tested: category tabs, Saved, account/login, and any visible account/menu controls. Do not leave visible top-nav buttons as dead UI.
 - Keep Save/Share/Add to Calendar/Tickets actions available in the event list, but only show the compact action row for the selected/clicked event card when the client asks for a cleaner list. Unselected list cards should stay focused on scanning.
 - The right-side event preview/detail card should show event details directly when an event is selected. Do not require a `View Details` button just to reveal the core details.
+- In the Saved events page/list, do not show duplicate mini action buttons on the saved card preview when the right-side detail pane already contains those actions. Keep saved-list previews clean and use the right-side detail area for actions.
+- Selected/saved event cards may keep the original subtle effect, but the pink selection frame/border must be fully visible on all sides and not clipped by parent overflow, image cropping, or container padding.
+- Full event detail pages/cards should place primary actions such as Share, Add to Calendar, and Tickets at the bottom of the detail content when the client requests that layout.
+- Bottom detail actions must appear in the actual detail view the client is using, not only in a separate variant/page. Verify visually that Share, Add Calendar, and Tickets are visible at the bottom of the selected event detail experience.
+- In the event detail bottom action row, the Tickets button should be styled as a prominent pink call-to-action.
+- Do not show internal/explanatory copy such as `Inferred from the event title, description, venue, and tags.` in the user-facing UI.
+- If the client asks to enlarge event-list image previews, increase only the thumbnail area inside the existing list width and move text slightly right; do not widen the event list panel unless explicitly requested.
 - The search status row should resemble the reference summary: active time/location context plus event count, free count, and nearby count when available.
 - Single event markers should be true pin/bubble markers with a pointed tail, white outer body/ring, category-colored center, icon inside, and shadow. Plain circles are not close enough.
 - Selected marker should have a large blue premium marker treatment with a visible glowing/ripple base.
 - Grouped count markers should keep the pink count-circle style with strong white ring and soft shadow.
 - Do not keep `Free` as a duplicate top-level category when it is already represented by the quick-filter chips; avoid duplicating the same concept in both the top category navigation and the quick filter row.
+- Do not duplicate saved/favorite navigation. Use the top-level `Saved` button as the single entry point for saved events, and remove `Favorite List` / duplicate saved-event links from the account menu unless the client asks for both.
 
 ## Current Technical Guardrails
 
@@ -87,6 +97,7 @@ Specific reference details the client expects:
 - Preserve marker click, grouped marker click, event card click, empty-map deselect, panel collapse, search, filter, and nearest behavior.
 - Visual redesigns must not turn working controls into decorative/dead buttons. Preserve or reconnect existing behavior for Locate, Save, Share, Add to Calendar, Tickets/View Details, filters, and map controls.
 - If a UI control cannot be wired safely yet, do not present it as active. Disable it with clear affordance or report the missing behavior before delivery.
+- Save/favorite state must stay synchronized across all places where the same event appears. Saving/unsaving in a list card should immediately update the corresponding detail card, saved count, and any other visible save buttons for that event.
 - Before editing, inspect current repo state because teammates may have changed code.
 
 ## QA Expectations

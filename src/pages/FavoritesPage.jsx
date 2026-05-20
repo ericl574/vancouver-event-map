@@ -224,6 +224,8 @@ export default function FavoritesPage() {
                       event={event}
                       isSelected={String(selectedEvent?.id) === String(event.id)}
                       onClick={setSelectedEvent}
+                      authSession={authSession}
+                      showActions={false}
                     />
                   ))}
                 </div>
