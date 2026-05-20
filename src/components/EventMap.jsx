@@ -488,14 +488,14 @@ function createCountBadgeImage(count, isSelected = false) {
   context.shadowOffsetY = 3;
   context.beginPath();
   context.arc(center, center, radius, 0, Math.PI * 2);
-  context.fillStyle = isSelected ? "#db2777" : "#ec4899";
+  context.fillStyle = isSelected ? "#FCA5B0" : "#FEDEE1";
   context.fill();
   context.restore();
 
   // Solid fill (no shadow, drawn over shadow)
   context.beginPath();
   context.arc(center, center, radius, 0, Math.PI * 2);
-  context.fillStyle = isSelected ? "#db2777" : "#ec4899";
+  context.fillStyle = isSelected ? "#FCA5B0" : "#FEDEE1";
   context.fill();
 
   // White border
@@ -505,7 +505,7 @@ function createCountBadgeImage(count, isSelected = false) {
 
   // Count label
   context.font = `800 ${radius >= 30 ? 16 : radius >= 24 ? 15 : 14}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.fillStyle = "#ffffff";
+  context.fillStyle = isSelected ? "#5D0F20" : "#8B2040";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(String(clampBadgeCount(count)), center, center + 0.5);

@@ -29,7 +29,6 @@ export default function CategoryExplorePanel({
   selectedSubcategory,
   onSelectSubcategory,
   onClose,
-  avoidLeftPanel = false,
 }) {
   const category = getCategoryTaxonomyById(selectedCategory);
 
@@ -49,9 +48,7 @@ export default function CategoryExplorePanel({
   return (
     <section
       data-category-explore-panel="true"
-      className={`relative flex max-h-[52dvh] w-full flex-col overflow-hidden border-b border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/10 backdrop-blur-xl transition-all duration-300 lg:block lg:max-h-none lg:overflow-hidden ${
-        avoidLeftPanel ? "lg:ml-[390px] lg:w-[calc(100%-390px)]" : ""
-      }`}
+      className="relative flex max-h-[52dvh] w-full flex-col overflow-hidden border-b border-slate-200/60 bg-white/93 shadow-xl shadow-slate-900/10 backdrop-blur-2xl transition-all duration-300 lg:max-h-none lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-white/60 lg:bg-white/90 lg:shadow-2xl lg:shadow-slate-900/14"
     >
       {/* Inner scrollable wrapper — enables internal scroll on mobile if content overflows */}
       <div className="no-scrollbar flex-1 overflow-y-auto">

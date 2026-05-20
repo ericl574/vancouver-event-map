@@ -372,7 +372,12 @@ export default function MapHomePage() {
   }
 
   function handleSelectEvent(event) {
-    setSelectedLocationGroup(null);
+    const isInCurrentGroup = selectedLocationGroup?.events.some(
+      (e) => String(e.id) === String(event?.id)
+    );
+    if (!isInCurrentGroup) {
+      setSelectedLocationGroup(null);
+    }
     setSelectedEvent(event);
 
     if (event?.distanceKm !== undefined) {
@@ -799,13 +804,16 @@ export default function MapHomePage() {
           />
 
           {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
-            <div className="absolute left-0 right-0 top-12 z-40 lg:top-16">
+            <div
+              className={`absolute right-0 top-12 z-40 lg:top-16 lg:right-20 ${
+                isEventListPanelOpen ? "left-0 lg:left-[452px]" : "left-0 lg:left-[60px]"
+              }`}
+            >
               <CategoryExplorePanel
                 selectedCategory={selectedCategory}
                 selectedSubcategory={selectedSubcategory}
                 onSelectSubcategory={handleSelectSubcategory}
                 onClose={() => setIsCategoryExplorePanelOpen(false)}
-                avoidLeftPanel={isEventListPanelOpen}
               />
             </div>
           )}

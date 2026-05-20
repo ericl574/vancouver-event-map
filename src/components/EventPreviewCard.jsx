@@ -90,7 +90,7 @@ export default function EventPreviewCard({
   // Mobile: flex-col so the header is always visible; desktop: plain scrolling block
   const sectionClassName = isDetailVariant
     ? "relative h-full w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl shadow-slate-900/10"
-    : "absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl will-change-transform lg:block lg:overflow-y-auto lg:max-h-[72vh] lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
+    : "absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl will-change-transform lg:bottom-auto lg:top-[17rem] lg:block lg:overflow-y-auto lg:max-h-[calc(100dvh-17rem-1rem)] lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
 
   // Applied only on mobile to drive the compact/full height + live drag feedback
   const mobileSheetStyle =
