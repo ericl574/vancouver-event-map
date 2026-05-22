@@ -32,6 +32,7 @@ const SOURCE_NAME = "ticketmaster";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 const IMPORT_DAYS_AHEAD = Number(process.env.TICKETMASTER_EVENTS_DAYS_AHEAD || 365);
+const DRY_RUN = process.argv.includes("--dry-run");
 
 function toTicketmasterDateTime(date) {
   return date.toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -130,8 +131,8 @@ function mapTicketmasterEventToRawEvent(event) {
     raw_image_url: getBestImageUrl(event),
     raw_ticket_url: event.url || null,
     raw_json: event,
-    import_status: "new",
-    error_message: null,
+    // import_status intentionally omitted: DB default is 'new' for new rows,
+    // and existing rows keep their current status (normalized/error) on upsert.
   };
 }
 
@@ -177,13 +178,57 @@ async function fetchTicketmasterPage(page) {
   return response.json();
 }
 
+// Only reset errors that are likely to be fixed by a fresh import+normalize run.
+// Permanent schema/data errors are left alone to avoid infinite retry loops.
+const RETRYABLE_ERROR_PATTERNS = [
+  "Missing latitude or longitude",
+  "geocod",
+  "coordinates",
+];
+
+async function resetErrorEventsForRetry() {
+  // Fetch current error rows so we can filter by message client-side.
+  const { data: errorRows, error: fetchError } = await supabase
+    .from("raw_events")
+    .select("id, error_message")
+    .eq("source_name", SOURCE_NAME)
+    .eq("import_status", "error");
+
+  if (fetchError) throw fetchError;
+  if (!errorRows || errorRows.length === 0) return { reset: 0, skipped: 0 };
+
+  const retryableIds = errorRows
+    .filter((row) =>
+      RETRYABLE_ERROR_PATTERNS.some((pattern) =>
+        (row.error_message || "").toLowerCase().includes(pattern.toLowerCase())
+      )
+    )
+    .map((row) => row.id);
+
+  const skipped = errorRows.length - retryableIds.length;
+
+  if (retryableIds.length === 0) {
+    return { reset: 0, skipped };
+  }
+
+  const { data, error } = await supabase
+    .from("raw_events")
+    .update({ import_status: "new", error_message: null })
+    .in("id", retryableIds)
+    .select("id");
+
+  if (error) throw error;
+
+  return { reset: data?.length ?? 0, skipped };
+}
+
 async function importTicketmasterEvents() {
-  console.log("Starting Ticketmaster import...");
+  console.log(DRY_RUN ? "DRY RUN — no data will be written." : "Starting Ticketmaster import...");
   console.log(`Time zone reference: ${VANCOUVER_TIME_ZONE}`);
   console.log(`Fetching Vancouver events for the next ${IMPORT_DAYS_AHEAD} days...`);
 
   let totalFetched = 0;
-  let totalSaved = 0;
+  let totalUpserted = 0;
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const data = await fetchTicketmasterPage(page);
@@ -202,30 +247,43 @@ async function importTicketmasterEvents() {
         .map(mapTicketmasterEventToRawEvent)
         .filter((row) => row.source_url && row.external_id)
     );
-      const { error } = await supabase
-        .from("raw_events")
-        .upsert(rows, {
-          onConflict: "source_name,external_id",
-        });
-
-    if (error) {
-      throw error;
-    }
-
-    totalSaved += rows.length;
 
     console.log(
-      `Page ${page + 1}/${totalPages}: fetched ${events.length}, queued/refreshed ${rows.length}`
+      `Page ${page + 1}/${totalPages}: fetched ${events.length}, deduplicated to ${rows.length}`
     );
+
+    if (!DRY_RUN) {
+      const { error } = await supabase
+        .from("raw_events")
+        .upsert(rows, { onConflict: "source_name,external_id" });
+
+      if (error) throw error;
+    }
+
+    totalUpserted += rows.length;
 
     if (page + 1 >= totalPages) {
       break;
     }
   }
 
-  console.log("Ticketmaster import complete.");
-  console.log(`Fetched: ${totalFetched}`);
-  console.log(`Queued/refreshed in raw_events: ${totalSaved}`);
+  if (!DRY_RUN) {
+    // Reset retryable error events so the normalizer retries them.
+    const { reset, skipped } = await resetErrorEventsForRetry();
+    if (reset > 0) {
+      console.log(`  Reset ${reset} coordinate-error events to 'new' for retry.`);
+    }
+    if (skipped > 0) {
+      console.log(`  Left ${skipped} error events untouched (non-retryable errors preserved).`);
+    }
+  }
+
+  console.log(DRY_RUN ? "\nDry-run summary (nothing written):" : "\nTicketmaster import complete.");
+  console.log(`  Events fetched from API : ${totalFetched}`);
+  console.log(`  Rows upserted/would-upsert: ${totalUpserted}`);
+  if (!DRY_RUN) {
+    console.log(`\nNext step: run normalizeTicketmasterRawEvents.js to process new raw events.`);
+  }
 }
 
 importTicketmasterEvents().catch((error) => {

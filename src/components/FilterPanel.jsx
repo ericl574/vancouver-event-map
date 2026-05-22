@@ -81,7 +81,7 @@ export default function FilterPanel({ isOpen, filters, onChange, onClose }) {
     <div className="pointer-events-none absolute inset-0 z-[90] bg-black/25 lg:bg-transparent">
       <section
         data-filter-panel="true"
-        className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[72dvh] flex-col overflow-hidden overflow-x-hidden rounded-t-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-5 lg:right-auto lg:top-36 lg:max-h-[calc(100vh-10.25rem)] lg:w-[396px] lg:max-w-[396px] lg:rounded-[2rem]"
+        className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[72dvh] flex-col overflow-hidden overflow-x-hidden rounded-t-[2rem] border border-slate-200/80 bg-white/95 p-5 shadow-2xl shadow-slate-900/15 backdrop-blur-xl lg:bottom-auto lg:left-5 lg:right-auto lg:top-36 lg:max-h-[calc(100vh-10.25rem)] lg:w-[422px] lg:max-w-[422px] lg:rounded-[2rem]"
       >
         <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
           <div>

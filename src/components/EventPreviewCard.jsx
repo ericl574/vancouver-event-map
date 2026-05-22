@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import CategoryIcon from "./CategoryIcon";
 import { getCategoryById } from "../data/categories";
-import { inferEventSubcategories } from "../utils/categoryTaxonomyUtils";
 import {
   IconBookmark,
   IconCalendarPlus,
@@ -84,13 +83,12 @@ export default function EventPreviewCard({
   if (!event) return null;
 
   const category = getCategoryById(event.category);
-  const eventSubcategories = inferEventSubcategories(event);
   const eventUrl = getEventUrl(event);
 
   // Mobile: flex-col so the header is always visible; desktop: plain scrolling block
   const sectionClassName = isDetailVariant
     ? "relative h-full w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl shadow-slate-900/10"
-    : "absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl will-change-transform lg:bottom-auto lg:top-[17rem] lg:block lg:overflow-y-auto lg:max-h-[calc(100dvh-17rem-1rem)] lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
+    : "absolute inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl will-change-transform lg:bottom-auto lg:top-[19rem] lg:block lg:overflow-y-auto lg:max-h-[calc(100dvh-19rem-1rem)] lg:left-auto lg:right-6 lg:w-96 lg:rounded-3xl";
 
   // Applied only on mobile to drive the compact/full height + live drag feedback
   const mobileSheetStyle =
@@ -109,7 +107,7 @@ export default function EventPreviewCard({
 
   const descriptionClassName = isDetailVariant
     ? "mt-4 text-sm leading-6 text-slate-600"
-    : "mt-3 line-clamp-2 text-sm text-slate-600 sm:line-clamp-3";
+    : "mt-3 text-sm leading-6 text-slate-600";
 
   async function handleShareEvent() {
     const shareUrl = `${window.location.origin}/?event=${event.id}`;
@@ -463,25 +461,6 @@ ${event.price}`;
         <p className={descriptionClassName}>
           {event.description || "No description provided."}
         </p>
-
-        {/* Event analysis */}
-        {eventSubcategories.length > 0 && (
-          <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-3 text-slate-800">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
-              Event analysis
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {eventSubcategories.map((sub) => (
-                <span
-                  key={sub.id}
-                  className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-600 ring-1 ring-pink-100"
-                >
-                  {sub.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Date / Time / Price grid */}
         <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">

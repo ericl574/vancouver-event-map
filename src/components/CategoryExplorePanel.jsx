@@ -9,7 +9,7 @@ function SubcategoryChip({ subcategory, isSelected, onSelect }) {
       className={`flex w-full items-center gap-2 rounded-2xl border px-3 py-2.5 text-left text-sm font-semibold transition active:scale-[0.97] ${
         isSelected
           ? "border-pink-300 bg-pink-50 text-pink-700 shadow-sm"
-          : "border-slate-200 bg-white text-slate-700 hover:border-pink-200 hover:bg-pink-50/70 hover:text-pink-600"
+          : "border-white/60 bg-white/80 text-slate-700 hover:border-pink-200 hover:bg-pink-50/90 hover:text-pink-600"
       }`}
     >
       <span
@@ -48,25 +48,28 @@ export default function CategoryExplorePanel({
   return (
     <section
       data-category-explore-panel="true"
-      className="relative flex max-h-[52dvh] w-full flex-col overflow-hidden border-b border-slate-200/60 bg-white/93 shadow-xl shadow-slate-900/10 backdrop-blur-2xl transition-all duration-300 lg:max-h-none lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-white/60 lg:bg-white/90 lg:shadow-2xl lg:shadow-slate-900/14"
+      className="relative flex max-h-[52dvh] w-full flex-col overflow-hidden border-b border-white/20 shadow-xl shadow-slate-900/10 transition-all duration-300 lg:max-h-none lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-white/20 lg:shadow-2xl lg:shadow-slate-900/14"
     >
-      {/* Inner scrollable wrapper — enables internal scroll on mobile if content overflows */}
-      <div className="no-scrollbar flex-1 overflow-y-auto">
+      {/* Blurred hero image stretched as panel background */}
+      {heroImageUrl && (
+        <div className="absolute inset-0 z-0">
+          <img
+            src={heroImageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 backdrop-blur-2xl" />
+          <div className="absolute inset-0 bg-white/40" />
+        </div>
+      )}
+
+      {/* Inner scrollable wrapper */}
+      <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto">
         <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] lg:gap-5 lg:px-6 lg:py-5">
 
-          {/* Hero photo card — tapping selects "all" and closes the panel */}
-          <button
-            type="button"
-            onClick={() => {
-              onSelectSubcategory("all");
-              onClose?.();
-            }}
-            aria-pressed={selectedSubcategory === "all"}
-            className={`group relative cursor-pointer overflow-hidden text-left transition active:scale-[0.99] active:brightness-95 lg:min-h-[120px] lg:rounded-[1.5rem] lg:border lg:shadow-sm lg:hover:-translate-y-0.5 lg:hover:shadow-lg ${
-              selectedSubcategory === "all"
-                ? "lg:border-pink-300 lg:ring-4 lg:ring-pink-100"
-                : "lg:border-white/70 lg:hover:border-pink-200"
-            }`}
+          {/* Hero photo card */}
+          <div
+            className="group relative overflow-hidden lg:min-h-[120px] lg:rounded-[1.5rem] lg:border lg:border-white/70 lg:shadow-sm"
           >
             {heroImageUrl && (
               <img
@@ -90,17 +93,13 @@ export default function CategoryExplorePanel({
               <h2 className="mt-0.5 text-base font-black leading-tight text-white drop-shadow lg:mt-1 lg:text-2xl">
                 {category.allLabel || allOption?.label || category.label}
               </h2>
-
-              <p className="mt-1 text-[11px] font-semibold text-white/65 lg:hidden">
-                Tap to show all events →
-              </p>
             </div>
-          </button>
+          </div>
 
           {/* Subcategory chips */}
           <div className="px-4 py-3 lg:min-w-0 lg:px-0 lg:py-0">
             <div className="mb-2.5 flex items-center justify-between gap-3">
-              <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+              <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-600">
                 Explore by type
               </h3>
 
@@ -108,7 +107,7 @@ export default function CategoryExplorePanel({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500 transition hover:bg-slate-200 hover:text-slate-800 lg:hidden"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-xs text-slate-500 transition hover:bg-white hover:text-slate-800 lg:hidden"
                   aria-label="Close explore panel"
                 >
                   ✕

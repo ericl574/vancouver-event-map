@@ -194,7 +194,7 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
         {/* Action row */}
         {showActions && (
           <div
-            className="flex items-center gap-1.5 border-t border-pink-100 px-3 pb-2.5 pt-2"
+            className="flex items-center gap-1.5 border-t border-slate-100 px-3 pb-2.5 pt-2"
             onClick={(e) => e.stopPropagation()}
           >
             <button

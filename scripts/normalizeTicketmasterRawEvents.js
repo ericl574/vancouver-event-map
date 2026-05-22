@@ -5,7 +5,14 @@ dotenv.config();
 import { createClient } from "@supabase/supabase-js";
 import { findBestEventMatch } from "./lib/eventDedupe.js";
 
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+const {
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+  VITE_MAPBOX_TOKEN,
+  MAPBOX_TOKEN,
+} = process.env;
+
+const MAPBOX_ACCESS_TOKEN = VITE_MAPBOX_TOKEN || MAPBOX_TOKEN || null;
 
 if (!SUPABASE_URL) {
   throw new Error("Missing SUPABASE_URL in .env.local");
@@ -13,6 +20,12 @@ if (!SUPABASE_URL) {
 
 if (!SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY in .env.local");
+}
+
+if (!MAPBOX_ACCESS_TOKEN) {
+  console.warn(
+    "Warning: No VITE_MAPBOX_TOKEN or MAPBOX_TOKEN found. Geocoding fallback disabled."
+  );
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -48,6 +61,101 @@ function parseNumber(value) {
   const number = Number(value);
 
   return Number.isFinite(number) ? number : null;
+}
+
+// Venue name patterns that indicate no real physical location.
+// Events matching these should not be geocoded or shown on the map.
+const UNSAFE_VENUE_PATTERNS = [
+  /\bonline\b/i,
+  /\bvirtual\b/i,
+  /\bstreaming\b/i,
+  /\bwebinar\b/i,
+  /\bbroadcast\b/i,
+  /^tba$/i,
+  /\btba\b/i,
+  /^tbd$/i,
+  /\btbd\b/i,
+  /\bto be announced\b/i,
+  /\bto be determined\b/i,
+  /\bunknown venue\b/i,
+];
+
+function isUnsafeVenueForGeocoding(venueName, city) {
+  if (!venueName || venueName.trim() === "") return true;
+
+  const text = `${venueName} ${city || ""}`;
+
+  return UNSAFE_VENUE_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+// Geocoding results are cached by (venue, address, city) to avoid redundant
+// API calls when many events share the same venue (e.g. 49x "Under the Big Top").
+const geocodeCache = new Map();
+
+async function geocodeVenueMapbox(venueName, address, city) {
+  if (!MAPBOX_ACCESS_TOKEN) return null;
+
+  const cacheKey = `${venueName}|${address || ""}|${city || ""}`;
+
+  if (geocodeCache.has(cacheKey)) {
+    return geocodeCache.get(cacheKey);
+  }
+
+  const queryParts = [
+    venueName,
+    address,
+    city || "Vancouver",
+    "BC",
+    "Canada",
+  ].filter(Boolean);
+
+  const query = encodeURIComponent(queryParts.join(", "));
+
+  const { minLat, maxLat, minLng, maxLng } = GREATER_VANCOUVER_BOUNDS;
+  const bbox = `${minLng},${minLat},${maxLng},${maxLat}`;
+
+  const url =
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json` +
+    `?access_token=${MAPBOX_ACCESS_TOKEN}` +
+    `&country=CA` +
+    `&bbox=${bbox}` +
+    `&proximity=-123.12,49.28` +
+    `&types=poi,address,place` +
+    `&limit=1`;
+
+  // Respect Mapbox rate limits between unique queries.
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(
+      `Mapbox geocoding error ${response.status}: ${body.slice(0, 200)}`
+    );
+  }
+
+  const data = await response.json();
+  const feature = data?.features?.[0];
+
+  let result = null;
+
+  if (feature) {
+    const relevance = feature.relevance ?? 0;
+    const [lng, lat] = feature.center;
+
+    if (relevance >= 0.5 && isInsideGreaterVancouver(lat, lng)) {
+      result = {
+        lat,
+        lng,
+        relevance,
+        placeName: feature.place_name,
+      };
+    }
+  }
+
+  geocodeCache.set(cacheKey, result);
+  return result;
 }
 
 function isInsideGreaterVancouver(lat, lng) {
@@ -611,14 +719,52 @@ async function normalizeTicketmasterRawEvents() {
   let normalizedCount = 0;
   let linkedExistingCount = 0;
   let errorCount = 0;
+  let geocodedCount = 0;
+  let skippedUnsafeCount = 0;
+  const geocodedVenues = [];
+  const remainingErrors = [];
 
   for (const rawEvent of rawEvents) {
     try {
       const event = mapRawEventToEvent(rawEvent);
+
+      // Attempt geocoding fallback when Ticketmaster has no real coordinates.
+      // TM stores "0" (parsed as 0) for missing coords — falsy, same as null.
+      if (!event.lat || !event.lng) {
+        if (isUnsafeVenueForGeocoding(event.venue, event.city)) {
+          skippedUnsafeCount += 1;
+          errorCount += 1;
+          const msg = `Skipped: online/virtual/TBA venue — "${event.venue || "(no venue)"}". Not geocoded.`;
+          await markRawEventAsError(rawEvent.id, msg);
+          console.log(`Unsafe venue ${rawEvent.id}: ${event.venue || "(no venue)"}`);
+          continue;
+        }
+
+        if (MAPBOX_ACCESS_TOKEN) {
+          const geocoded = await geocodeVenueMapbox(
+            event.venue,
+            event.address,
+            event.city
+          );
+
+          if (geocoded) {
+            event.lat = geocoded.lat;
+            event.lng = geocoded.lng;
+            geocodedCount += 1;
+            const venueLabel = `${event.venue} → ${geocoded.lat.toFixed(5)},${geocoded.lng.toFixed(5)} (relevance ${geocoded.relevance.toFixed(2)})`;
+            if (!geocodedVenues.includes(event.venue)) {
+              geocodedVenues.push(event.venue);
+              console.log(`Geocoded: ${venueLabel}`);
+            }
+          }
+        }
+      }
+
       const validationError = validateEvent(event);
 
       if (validationError) {
         errorCount += 1;
+        remainingErrors.push({ venue: event.venue, error: validationError });
         await markRawEventAsError(rawEvent.id, validationError);
         console.log(`Skipped raw event ${rawEvent.id}: ${validationError}`);
         continue;
@@ -668,10 +814,25 @@ async function normalizeTicketmasterRawEvents() {
     }
   }
 
-  console.log("Ticketmaster normalization complete.");
-  console.log(`Normalized new events: ${normalizedCount}`);
-  console.log(`Updated existing events: ${linkedExistingCount}`);
-  console.log(`Errors: ${errorCount}`);
+  console.log("\nTicketmaster normalization complete.");
+  console.log(`  Normalized new events  : ${normalizedCount}`);
+  console.log(`  Updated existing events: ${linkedExistingCount}`);
+  console.log(`  Geocoded via Mapbox    : ${geocodedCount}`);
+  console.log(`  Skipped (unsafe venue) : ${skippedUnsafeCount}`);
+  console.log(`  Errors                 : ${errorCount}`);
+
+  if (geocodedVenues.length > 0) {
+    console.log(`\n  Geocoded venues (${geocodedVenues.length} unique):`);
+    for (const v of geocodedVenues) console.log(`    - ${v}`);
+  }
+
+  if (remainingErrors.length > 0) {
+    const sample = remainingErrors.slice(0, 5);
+    console.log(`\n  Sample remaining errors:`);
+    for (const e of sample) {
+      console.log(`    - ${e.venue || "(no venue)"}: ${e.error}`);
+    }
+  }
 }
 
 normalizeTicketmasterRawEvents().catch((error) => {

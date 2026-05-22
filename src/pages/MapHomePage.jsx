@@ -365,13 +365,14 @@ export default function MapHomePage() {
   }
 
   function handleSelectSubcategory(genreId) {
-    setSelectedSubcategory(genreId);
+    setSelectedSubcategory((prev) => (prev === genreId ? "all" : genreId));
     setSelectedLocationGroup(null);
     setNearestEvent(null);
     setNearestError("");
   }
 
   function handleSelectEvent(event) {
+    setIsAccountMenuOpen(false);
     const isInCurrentGroup = selectedLocationGroup?.events.some(
       (e) => String(e.id) === String(event?.id)
     );
@@ -392,9 +393,11 @@ export default function MapHomePage() {
 
   function handleMapBackgroundClick() {
     setIsFilterOpen(false);
+    setIsAccountMenuOpen(false);
   }
 
   function handleSelectLocationGroup(group) {
+    setIsAccountMenuOpen(false);
     setSelectedLocationGroup({
       key: group.key,
       venue: group.primaryEvent?.venue || "This location",
@@ -606,6 +609,12 @@ export default function MapHomePage() {
 
   const activeFilterSummary = getActiveFilterSummary(filters);
 
+  const timeRangeHint = (() => {
+    if (filters.startDate || filters.endDate) return null;
+    if (filters.timeRange === "30d") return "default: 30 days";
+    return TIME_FILTER_SUMMARIES[filters.timeRange]?.label ?? null;
+  })();
+
   const isWeekendFilter =
     filters.startDate && filters.endDate && !filters.timeRange;
 
@@ -805,8 +814,8 @@ export default function MapHomePage() {
 
           {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
             <div
-              className={`absolute right-0 top-12 z-40 lg:top-16 lg:right-20 ${
-                isEventListPanelOpen ? "left-0 lg:left-[452px]" : "left-0 lg:left-[60px]"
+              className={`absolute right-0 top-12 z-40 lg:top-[68px] lg:right-20 ${
+                isEventListPanelOpen ? "left-0 lg:left-[478px]" : "left-0 lg:left-[60px]"
               }`}
             >
               <CategoryExplorePanel
@@ -819,7 +828,7 @@ export default function MapHomePage() {
           )}
 
           {/* Search bar: full width on mobile, fixed width left-aligned on desktop */}
-          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[396px] lg:px-0">
+          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[422px] lg:px-0">
             <SearchBar
               query={query}
               onQueryChange={handleQueryChange}
@@ -828,6 +837,7 @@ export default function MapHomePage() {
               onSelectSuggestion={handleSelectAddressSuggestion}
               isSearchingLocation={isSearchingLocation}
               activeFilterSummary={activeFilterSummary}
+              timeRangeHint={timeRangeHint}
             />
           </div>
 

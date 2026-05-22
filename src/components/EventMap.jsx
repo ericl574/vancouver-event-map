@@ -801,6 +801,32 @@ function addEventLayers(map) {
     },
   });
 
+  map.addLayer({
+    id: "event-location-group-venue-label",
+    type: "symbol",
+    source: EVENT_SOURCE_ID,
+    filter: [
+      "all",
+      ["!", ["has", "point_count"]],
+      [">", ["get", "eventCount"], 1],
+    ],
+    layout: {
+      "text-field": ["get", "venue"],
+      "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+      "text-size": 11,
+      "text-anchor": "bottom",
+      "text-offset": [0, -2.4],
+      "text-max-width": 10,
+      "text-allow-overlap": false,
+      "text-ignore-placement": false,
+    },
+    paint: {
+      "text-color": "#F5569B",
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.5,
+    },
+  });
+
   // Invisible hit area kept for existing click/hover handlers.
   map.addLayer({
     id: EVENT_LOCATION_GROUP_COUNT_LAYER_ID,
@@ -1400,7 +1426,7 @@ export default function EventMap({
       </section>
 
       {isMapReady && (
-        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-3 lg:top-[4.5rem]">
+        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-3 lg:top-[68px]">
           {/* Locate */}
           <button
             type="button"

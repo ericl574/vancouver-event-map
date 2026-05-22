@@ -51,8 +51,8 @@ export default function EventListPanel({
 
   return (
     <div
-      className={`absolute bottom-4 left-5 top-[8.5rem] z-40 hidden w-[396px] transition-all duration-300 ease-out lg:block ${
-        isOpen ? "translate-x-0 opacity-100" : "-translate-x-[426px] opacity-100"
+      className={`absolute bottom-4 left-5 top-[8.5rem] z-40 hidden w-[422px] transition-all duration-300 ease-out lg:block ${
+        isOpen ? "translate-x-0 opacity-100" : "-translate-x-[452px] opacity-100"
       }`}
     >
       <aside className="relative flex h-full flex-col rounded-[28px] border border-slate-200/60 bg-white/97 shadow-2xl shadow-slate-900/12 backdrop-blur-xl">
@@ -97,7 +97,7 @@ export default function EventListPanel({
                   key={label}
                   type="button"
                   onClick={onSelect}
-                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${
+                  className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] font-bold transition ${
                     active
                       ? "border-pink-500 bg-pink-500 text-white"
                       : "border-slate-200 bg-slate-50 text-slate-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600"

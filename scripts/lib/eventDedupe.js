@@ -5,7 +5,7 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\b(the|a|an|live|tour|tickets|vancouver|bc|canada)\b/g, " ")
+    .replace(/\b(the|a|an|live|tour|tickets|vancouver|bc|canada|with|presents|featuring|presented)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

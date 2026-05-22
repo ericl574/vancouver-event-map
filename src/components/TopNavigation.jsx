@@ -115,7 +115,7 @@ export default function TopNavigation({
               </button>
 
               {isAccountMenuOpen && (
-                <div className="absolute right-0 top-full mt-3 w-72 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white text-slate-800 shadow-2xl shadow-slate-900/20">
+                <div className="fixed right-[60px] top-[68px] z-[200] w-72 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white text-slate-800 shadow-2xl shadow-slate-900/20">
                   <div className="border-b border-slate-100 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                       Signed in as
