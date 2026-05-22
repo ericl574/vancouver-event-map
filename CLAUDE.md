@@ -115,6 +115,7 @@ Specific reference details the client expects:
 - Grouped count markers should use the approved stronger pink `#F5569B` for the big bubble/number treatment with readable text, strong white ring, and soft shadow.
 - Do not keep `Free` as a duplicate top-level category when it is already represented by the quick-filter chips; avoid duplicating the same concept in both the top category navigation and the quick filter row.
 - Do not duplicate saved/favorite navigation. Use the top-level `Saved` button as the single entry point for saved events, and remove `Favorite List` / duplicate saved-event links from the account menu unless the client asks for both.
+- Event category and subcategory classification must prioritize obvious domain terms and source categories. Sports terms such as football, soccer, basketball, hockey, baseball, match, game, tournament, vs., club, league, stadium, and team should classify as Sports, not Music. Do not assign music subcategories such as Electronic/Classical to sports events.
 
 ## Current Technical Guardrails
 

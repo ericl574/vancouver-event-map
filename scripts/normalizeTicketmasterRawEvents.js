@@ -262,7 +262,34 @@ function isFreeEvent(rawEvent) {
 
 function inferCategory(rawEvent) {
   const text = getKeywordText(rawEvent);
+  const classifications = getTicketmasterClassifications(rawEvent.raw_json || {});
 
+  // Sports — must be first to prevent "Football Club" → nightlife, etc.
+  if (
+    classifications.segment.toLowerCase() === "sports" ||
+    text.includes("sports") ||
+    text.includes("soccer") ||
+    text.includes("football") ||
+    text.includes("basketball") ||
+    text.includes("hockey") ||
+    text.includes("baseball") ||
+    text.includes("matches") ||
+    text.includes(" match ") ||
+    text.includes("tournament") ||
+    text.includes("playoff") ||
+    text.includes("championship") ||
+    text.includes(" vs ") ||
+    text.includes("whitecaps") ||
+    text.includes("canucks") ||
+    text.includes("bc lions") ||
+    text.includes(" mls") ||
+    text.includes(" nhl") ||
+    text.includes(" nba") ||
+    text.includes(" nfl") ||
+    text.includes(" cfl")
+  ) {
+    return "sports";
+  }
 
   if (
     text.includes("concert") ||
@@ -349,10 +376,14 @@ function inferCategory(rawEvent) {
 
   if (
     text.includes("nightlife") ||
-    text.includes("club") ||
     text.includes("dj") ||
     text.includes("party")
   ) {
+    return "nightlife";
+  }
+
+  // "club" alone is too broad — only use it if no sports context already caught it above
+  if (text.includes("nightclub") || text.includes("night club")) {
     return "nightlife";
   }
 

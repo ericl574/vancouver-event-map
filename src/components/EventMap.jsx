@@ -482,8 +482,8 @@ function getBadgeRadius(count, isSelected = false) {
 
 function createCountBadgeImage(count, isSelected = false) {
   const radius = getBadgeRadius(count, isSelected);
-  const strokeWidth = isSelected ? 3.5 : 2.5;
-  const padding = 10;
+  const strokeWidth = isSelected ? 4 : 3;
+  const padding = 12;
   const displaySize = Math.ceil((radius + strokeWidth + padding) * 2);
   const canvas = document.createElement("canvas");
 
@@ -494,40 +494,35 @@ function createCountBadgeImage(count, isSelected = false) {
   context.scale(BADGE_IMAGE_PIXEL_RATIO, BADGE_IMAGE_PIXEL_RATIO);
 
   const center = displaySize / 2;
+  const fillColor = isSelected ? "#d42f7a" : "#F5569B";
 
-  // Drop shadow
+  // Vivid glow shadow
   context.save();
-  context.shadowColor = "rgba(15, 23, 42, 0.28)";
-  context.shadowBlur = 8;
+  context.shadowColor = isSelected ? "rgba(212, 47, 122, 0.6)" : "rgba(245, 86, 155, 0.5)";
+  context.shadowBlur = isSelected ? 16 : 12;
   context.shadowOffsetX = 0;
   context.shadowOffsetY = 3;
   context.beginPath();
   context.arc(center, center, radius, 0, Math.PI * 2);
-  context.fillStyle = isSelected ? "#FCA5B0" : "#FEDEE1";
+  context.fillStyle = fillColor;
   context.fill();
   context.restore();
 
-  // Solid fill (no shadow, drawn over shadow)
+  // Solid fill
   context.beginPath();
   context.arc(center, center, radius, 0, Math.PI * 2);
-  context.fillStyle = isSelected ? "#FCA5B0" : "#FEDEE1";
+  context.fillStyle = fillColor;
   context.fill();
 
-  // Pink-tinted outer ring
+  // White ring
   context.lineWidth = strokeWidth;
-  context.strokeStyle = isSelected ? "rgba(212, 0, 90, 0.85)" : "rgba(244, 78, 134, 0.85)";
-  context.stroke();
-
-  // White inner circle line — flush against the inner edge of the pink ring
-  context.beginPath();
-  context.arc(center, center, radius - strokeWidth / 2 - 0.75, 0, Math.PI * 2);
-  context.lineWidth = 1.5;
-  context.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  context.strokeStyle = "#ffffff";
   context.stroke();
 
   // Count label
-  context.font = `800 ${radius >= 30 ? 16 : radius >= 24 ? 15 : 14}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.fillStyle = isSelected ? "#8B0042" : "#C80058";
+  const fontSize = radius >= 30 ? 17 : radius >= 24 ? 15 : 13;
+  context.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.fillStyle = "#ffffff";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(String(clampBadgeCount(count)), center, center + 0.5);
