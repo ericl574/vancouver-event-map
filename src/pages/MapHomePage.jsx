@@ -969,6 +969,36 @@ export default function MapHomePage() {
         onChange={setFilters}
         onClose={() => setIsFilterOpen(false)}
       />
+
+      {/* Desktop top ticker */}
+      <div className="pointer-events-none fixed top-[68px] left-1/2 z-20 hidden -translate-x-1/2 lg:block">
+        <div
+          className="w-[420px] overflow-hidden rounded-full bg-white/80 px-5 py-2 shadow-lg shadow-slate-900/10 backdrop-blur ring-1 ring-slate-200/60"
+          style={{ WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)" }}
+        >
+          <style>{`@keyframes van-ticker-desktop { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+          <div
+            className="flex w-max items-center gap-6 whitespace-nowrap"
+            style={{ animation: "van-ticker-desktop 28s linear infinite" }}
+          >
+            {[...Array(2)].map((_, gi) =>
+              [
+                "Discover what's on tonight",
+                "Music · Arts · Food & More",
+                "Find events near you",
+                "Your weekend starts here",
+                "Live concerts · Markets · Festivals",
+                "What's your vibe this week?",
+              ].map((phrase, i) => (
+                <span key={`${gi}-${i}`} className="flex items-center gap-5">
+                  <span className="text-[11px] font-semibold text-slate-500">{phrase}</span>
+                  <span className="text-[9px] text-pink-400">✦</span>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

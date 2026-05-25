@@ -197,53 +197,99 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
             className="flex items-center gap-1.5 border-t border-slate-100 px-3 pb-2.5 pt-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={handleToggleSave}
-              className={`flex flex-1 items-center justify-center gap-1 rounded-full border py-1 text-[10px] font-bold transition ${
-                isSaved
-                  ? "border-pink-200 bg-pink-50 text-pink-600"
-                  : "border-slate-200 bg-slate-50 text-slate-500 hover:border-pink-200 hover:text-pink-600"
-              }`}
-            >
-              <IconBookmark className={`h-3 w-3 ${isSaved ? "fill-current" : ""}`} />
-              <span>Save</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-            >
-              <IconShare className="h-3 w-3" />
-              <span>Share</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleCalendar}
-              className="flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-            >
-              <IconCalendarPlus className="h-3 w-3" />
-              <span>{onViewDetails ? "Calendar" : "Add to calendar"}</span>
-            </button>
-            {eventUrl && (
-              <a
-                href={eventUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex flex-1 items-center justify-center rounded-full bg-pink-500 py-1 text-[10px] font-bold text-white transition hover:bg-pink-600"
-              >
-                Tickets
-              </a>
-            )}
-            {onViewDetails && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
-                className="flex flex-1 items-center justify-center rounded-full border border-slate-700 bg-slate-800 py-1 text-[10px] font-bold text-white transition hover:bg-slate-900"
-              >
-                Details
-              </button>
+            {onViewDetails ? (
+              // Mobile: equal-width buttons
+              <>
+                <button
+                  type="button"
+                  onClick={handleToggleSave}
+                  className={`flex flex-1 items-center justify-center gap-1 rounded-full border py-1 text-[10px] font-bold transition ${
+                    isSaved
+                      ? "border-pink-200 bg-pink-50 text-pink-600"
+                      : "border-slate-200 bg-slate-50 text-slate-500 hover:border-pink-200 hover:text-pink-600"
+                  }`}
+                >
+                  <IconBookmark className={`h-3 w-3 ${isSaved ? "fill-current" : ""}`} />
+                  <span>Save</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                >
+                  <IconShare className="h-3 w-3" />
+                  <span>Share</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCalendar}
+                  className="flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                >
+                  <IconCalendarPlus className="h-3 w-3" />
+                  <span>Calendar</span>
+                </button>
+                {eventUrl && (
+                  <a
+                    href={eventUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex flex-1 items-center justify-center rounded-full bg-pink-500 py-1 text-[10px] font-bold text-white transition hover:bg-pink-600"
+                  >
+                    Tickets
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
+                  className="flex flex-1 items-center justify-center rounded-full border border-slate-700 bg-slate-800 py-1 text-[10px] font-bold text-white transition hover:bg-slate-900"
+                >
+                  Details
+                </button>
+              </>
+            ) : (
+              // Desktop: natural-width buttons
+              <>
+                <button
+                  type="button"
+                  onClick={handleToggleSave}
+                  className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-bold transition ${
+                    isSaved
+                      ? "border-pink-200 bg-pink-50 text-pink-600"
+                      : "border-slate-200 bg-slate-50 text-slate-500 hover:border-pink-200 hover:text-pink-600"
+                  }`}
+                >
+                  <IconBookmark className={`h-3 w-3 ${isSaved ? "fill-current" : ""}`} />
+                  <span>Save</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                >
+                  <IconShare className="h-3 w-3" />
+                  <span>Share</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCalendar}
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                >
+                  <IconCalendarPlus className="h-3 w-3" />
+                  <span>Add to calendar</span>
+                </button>
+                {eventUrl && (
+                  <a
+                    href={eventUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-full bg-pink-500 px-3 py-1 text-[10px] font-bold text-white transition hover:bg-pink-600"
+                  >
+                    Tickets
+                  </a>
+                )}
+              </>
             )}
           </div>
         )}
