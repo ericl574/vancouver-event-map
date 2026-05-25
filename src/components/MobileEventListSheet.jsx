@@ -5,7 +5,7 @@ const SHEET_STATES = ["peek", "mid", "full"];
 
 function getBaseTransform(state) {
   if (state === "full") return "translateY(0px)";
-  if (state === "mid") return "translateY(calc(100% - 60dvh))";
+  if (state === "mid") return "translateY(calc(100% - 45dvh))";
   return "translateY(calc(100% - 5rem - env(safe-area-inset-bottom, 0px)))";
 }
 
@@ -56,7 +56,7 @@ export default function MobileEventListSheet({
   useEffect(() => {
     if (sheetState === "peek" || !selectedEvent?.id) return;
     const el = itemRefs.current.get(String(selectedEvent.id));
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [sheetState, selectedEvent?.id]);
 
   function handleSelectEvent(event) {

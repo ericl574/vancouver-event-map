@@ -2,6 +2,28 @@ import CategoryIcon from "./CategoryIcon";
 import { IconBookmark } from "./Icons";
 import { categories } from "../data/categories";
 
+const TICKER_PHRASES = [
+  "Discover what's on tonight",
+  "Music · Arts · Food & More",
+  "Find events near you",
+  "Your weekend starts here",
+  "Live concerts · Markets · Festivals",
+  "What's your vibe this week?",
+];
+
+function TickerPhrases({ prefix }) {
+  return (
+    <>
+      {TICKER_PHRASES.map((phrase, i) => (
+        <span key={`${prefix}-${i}`} className="flex items-center gap-5">
+          <span className="text-[11px] font-semibold text-slate-500">{phrase}</span>
+          <span className="text-[9px] text-pink-400">✦</span>
+        </span>
+      ))}
+    </>
+  );
+}
+
 export default function TopNavigation({
   selectedCategory,
   onSelectCategory,
@@ -78,8 +100,20 @@ export default function TopNavigation({
           })}
         </nav>
 
-        {/* Mobile spacer pushes account button to the right */}
-        <div className="flex-1 lg:hidden" />
+        {/* Mobile marquee ticker */}
+        <div
+          className="relative flex-1 overflow-hidden lg:hidden"
+          style={{ WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)" }}
+        >
+          <style>{`@keyframes van-ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+          <div
+            className="flex w-max items-center gap-5 whitespace-nowrap"
+            style={{ animation: "van-ticker 24s linear infinite" }}
+          >
+            <TickerPhrases prefix="a" />
+            <TickerPhrases prefix="b" />
+          </div>
+        </div>
 
         {/* Saved link — desktop only */}
         <a

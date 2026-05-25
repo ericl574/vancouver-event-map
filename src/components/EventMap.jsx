@@ -513,7 +513,7 @@ function getBadgeRadius(count, isSelected = false) {
   return 16;
 }
 
-function createCountBadgeImage(count, isSelected = false) {
+function createCountBadgeImage(count, isSelected = false, fillAlpha = 0.5) {
   const radius = getBadgeRadius(count, isSelected);
   const strokeWidth = isSelected ? 4 : 3;
   const padding = 12;
@@ -529,8 +529,9 @@ function createCountBadgeImage(count, isSelected = false) {
   const center = displaySize / 2;
   const fillColor = isSelected ? "#d42f7a" : "#F5569B";
 
-  // Vivid glow shadow
+  // Semi-transparent fill with glow shadow — single draw to avoid alpha compounding
   context.save();
+  context.globalAlpha = fillAlpha;
   context.shadowColor = isSelected ? "rgba(212, 47, 122, 0.6)" : "rgba(245, 86, 155, 0.5)";
   context.shadowBlur = isSelected ? 16 : 12;
   context.shadowOffsetX = 0;
@@ -540,12 +541,6 @@ function createCountBadgeImage(count, isSelected = false) {
   context.fillStyle = fillColor;
   context.fill();
   context.restore();
-
-  // Solid fill
-  context.beginPath();
-  context.arc(center, center, radius, 0, Math.PI * 2);
-  context.fillStyle = fillColor;
-  context.fill();
 
   // White ring
   context.lineWidth = strokeWidth;
@@ -567,15 +562,26 @@ function addCountBadgeImages(map) {
   for (let count = 1; count <= MAX_BADGE_IMAGE_COUNT; count += 1) {
     const normalName = getCountBadgeImageName(count, false);
     const selectedName = getCountBadgeImageName(count, true);
+    const desktopNormalName = `desktop-${normalName}`;
+    const desktopSelectedName = `desktop-${selectedName}`;
 
     if (!map.hasImage(normalName)) {
-      map.addImage(normalName, createCountBadgeImage(count, false), {
+      map.addImage(normalName, createCountBadgeImage(count, false, 0.5), {
         pixelRatio: BADGE_IMAGE_PIXEL_RATIO,
       });
     }
-
     if (!map.hasImage(selectedName)) {
-      map.addImage(selectedName, createCountBadgeImage(count, true), {
+      map.addImage(selectedName, createCountBadgeImage(count, true, 0.5), {
+        pixelRatio: BADGE_IMAGE_PIXEL_RATIO,
+      });
+    }
+    if (!map.hasImage(desktopNormalName)) {
+      map.addImage(desktopNormalName, createCountBadgeImage(count, false, 0.75), {
+        pixelRatio: BADGE_IMAGE_PIXEL_RATIO,
+      });
+    }
+    if (!map.hasImage(desktopSelectedName)) {
+      map.addImage(desktopSelectedName, createCountBadgeImage(count, true, 0.75), {
         pixelRatio: BADGE_IMAGE_PIXEL_RATIO,
       });
     }
@@ -819,8 +825,8 @@ function addEventLayers(map) {
       "icon-image": [
         "case",
         ["==", ["get", "selected"], 1],
-        ["concat", "event-badge-selected-", ["to-string", ["get", "eventCount"]]],
-        ["concat", "event-badge-", ["to-string", ["get", "eventCount"]]],
+        ["concat", "desktop-event-badge-selected-", ["to-string", ["get", "eventCount"]]],
+        ["concat", "desktop-event-badge-", ["to-string", ["get", "eventCount"]]],
       ],
       "icon-size": 1,
       "icon-anchor": "center",
@@ -901,12 +907,12 @@ function addEventLayers(map) {
         [">", ["coalesce", ["get", "selected_count"], 0], 0],
         [
           "concat",
-          "event-badge-selected-",
+          "desktop-event-badge-selected-",
           ["to-string", ["coalesce", ["get", "event_count"], ["get", "point_count"]]],
         ],
         [
           "concat",
-          "event-badge-",
+          "desktop-event-badge-",
           ["to-string", ["coalesce", ["get", "event_count"], ["get", "point_count"]]],
         ],
       ],

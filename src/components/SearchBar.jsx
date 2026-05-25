@@ -147,7 +147,7 @@ export default function SearchBar({
         )}
 
         {timeRangeHint && (
-          <span className="hidden shrink-0 whitespace-nowrap rounded-xl border border-pink-200 px-2.5 py-1.5 text-xs text-pink-400 sm:block">
+          <span className="shrink-0 whitespace-nowrap rounded-xl border border-pink-200 px-2.5 py-1.5 text-xs text-pink-400">
             {timeRangeHint}
           </span>
         )}
@@ -162,12 +162,6 @@ export default function SearchBar({
           <IconSliders className="h-4.5 w-4.5 text-slate-600" />
         </button>
       </form>
-
-      {timeRangeHint && (
-        <p className="mt-1.5 pl-1 text-[11px] text-slate-400 sm:hidden">
-          {timeRangeHint}
-        </p>
-      )}
 
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 top-full z-[60] mt-1.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/15">
