@@ -275,35 +275,25 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
           )}
         </div>
 
-        {/* Text — all meta at text-[10px] to fit within image height */}
-        <div className="min-w-0 flex-1 py-2 pl-2 pr-1">
-          <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: category.hex || "#64748b" }}>
-            {category.label}
-          </div>
-
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+        {/* Text */}
+        <div className="min-w-0 flex-1 py-2.5 pl-2 pr-1">
+          {/* Title — most prominent */}
+          <h3 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900">
             {event.title}
           </h3>
 
-          <p className="mt-0.5 truncate text-[10px] text-slate-500">
-            {[event.venue, event.area].filter(Boolean).join(" · ")}
-          </p>
-
-          {(event.date || event.startTime || event.price) && (
-            <p className="mt-0.5 truncate text-[10px] text-slate-600">
-              {[event.date, event.startTime, event.price].filter(Boolean).join(" · ")}
+          {/* Date/time — high visibility */}
+          {(event.date || event.startTime) && (
+            <p className="mt-1 truncate text-[11px] font-semibold text-slate-700">
+              {[event.date, event.startTime].filter(Boolean).join(" · ")}
+              {event.price ? <span className="ml-1 text-slate-400">· {event.price}</span> : null}
             </p>
           )}
 
-          {eventSubcategories.length > 0 && (
-            <div className="mt-0.5 flex flex-wrap gap-1">
-              {eventSubcategories.slice(0, 2).map((sub) => (
-                <span key={sub.id} className="rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-bold text-pink-600 ring-1 ring-pink-100">
-                  {sub.label}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Venue/location — supporting info */}
+          <p className="mt-0.5 truncate text-[10px] text-slate-400">
+            {[event.venue, event.area].filter(Boolean).join(" · ")}
+          </p>
         </div>
 
         {/* Bookmark button */}

@@ -611,7 +611,7 @@ export default function MapHomePage() {
 
   const timeRangeHint = (() => {
     if (filters.startDate || filters.endDate) return null;
-    if (filters.timeRange === "30d") return "default: 30 days";
+    if (filters.timeRange === "30d") return "Next 30 days";
     return TIME_FILTER_SUMMARIES[filters.timeRange]?.label ?? null;
   })();
 

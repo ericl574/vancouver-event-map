@@ -3,6 +3,7 @@ import EventCard from "./EventCard";
 import { IconChevronDown } from "./Icons";
 
 const INITIAL_VISIBLE = 10;
+const LOAD_MORE_COUNT = 30;
 
 export default function EventListPanel({
   events,
@@ -30,10 +31,19 @@ export default function EventListPanel({
 
   useEffect(() => {
     if (!isOpen || !selectedEvent?.id) return;
+
+    // If the selected event is beyond the currently rendered list, expand it first.
+    // The effect will re-fire on the next render (visibleCount changed) and scroll then.
+    const idx = events.findIndex((e) => String(e.id) === String(selectedEvent.id));
+    if (idx >= 0 && idx >= visibleCount) {
+      setVisibleCount(idx + 1);
+      return;
+    }
+
     const selectedItem = itemRefs.current.get(String(selectedEvent.id));
     if (!selectedItem) return;
     selectedItem.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-  }, [isOpen, selectedEvent]);
+  }, [isOpen, selectedEvent, events, visibleCount]);
 
   const handleTogglePanel = () => {
     if (isOpen) onCollapse?.();
@@ -153,10 +163,10 @@ export default function EventListPanel({
           <div className="shrink-0 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setVisibleCount(events.length)}
+              onClick={() => setVisibleCount((c) => Math.min(c + LOAD_MORE_COUNT, events.length))}
               className="flex w-full items-center justify-center gap-1.5 py-3 text-sm font-semibold text-slate-500 transition hover:text-pink-600"
             >
-              <span>View more events</span>
+              <span>View {Math.min(LOAD_MORE_COUNT, events.length - visibleCount)} more events</span>
               <IconChevronDown className="h-4 w-4" />
             </button>
           </div>

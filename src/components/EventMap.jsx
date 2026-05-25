@@ -286,16 +286,49 @@ function getClusterExpansionZoomAsync(source, clusterId) {
 }
 
 function createUserLocationElement() {
-  const marker = document.createElement("div");
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "relative";
+  wrapper.style.width = "36px";
+  wrapper.style.height = "36px";
+  wrapper.style.display = "flex";
+  wrapper.style.alignItems = "center";
+  wrapper.style.justifyContent = "center";
 
-  marker.style.width = "22px";
-  marker.style.height = "22px";
-  marker.style.borderRadius = "9999px";
-  marker.style.background = "#2563eb";
-  marker.style.border = "4px solid white";
-  marker.style.boxShadow = "0 0 0 8px rgba(37, 99, 235, 0.2)";
+  // Animated pulse ring
+  const pulse = document.createElement("div");
+  pulse.style.position = "absolute";
+  pulse.style.inset = "0";
+  pulse.style.borderRadius = "9999px";
+  pulse.style.background = "rgba(37, 99, 235, 0.18)";
+  pulse.style.animation = "user-location-pulse 2s ease-out infinite";
 
-  return marker;
+  // Inner dot
+  const dot = document.createElement("div");
+  dot.style.position = "relative";
+  dot.style.width = "16px";
+  dot.style.height = "16px";
+  dot.style.borderRadius = "9999px";
+  dot.style.background = "#2563eb";
+  dot.style.border = "3px solid white";
+  dot.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.5)";
+
+  // Inject keyframe if not already present
+  if (!document.getElementById("user-location-pulse-style")) {
+    const style = document.createElement("style");
+    style.id = "user-location-pulse-style";
+    style.textContent = `
+      @keyframes user-location-pulse {
+        0%   { transform: scale(0.8); opacity: 0.8; }
+        70%  { transform: scale(1.8); opacity: 0; }
+        100% { transform: scale(0.8); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  wrapper.appendChild(pulse);
+  wrapper.appendChild(dot);
+  return wrapper;
 }
 
 function createDestinationLocationElement() {
@@ -1421,13 +1454,13 @@ export default function EventMap({
       </section>
 
       {isMapReady && (
-        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-3 lg:top-[68px]">
+        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-2 lg:top-[68px]">
           {/* Locate */}
           <button
             type="button"
             onClick={onLocate}
             disabled={isLocating}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-700 shadow-lg shadow-slate-900/15 ring-1 ring-slate-200/80 transition hover:bg-slate-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/97 text-slate-600 shadow-md shadow-slate-900/12 ring-1 ring-slate-200/70 transition hover:bg-slate-900 hover:text-white hover:ring-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Use current location"
             title="Use current location"
           >
@@ -1438,21 +1471,21 @@ export default function EventMap({
             )}
           </button>
 
-          {/* Zoom +/- stacked */}
-          <div className="flex flex-col overflow-hidden rounded-xl shadow-lg shadow-slate-900/15 ring-1 ring-slate-200/80">
+          {/* Zoom +/- — grouped in one card */}
+          <div className="flex flex-col overflow-hidden rounded-xl bg-white/97 shadow-md shadow-slate-900/12 ring-1 ring-slate-200/70">
             <button
               type="button"
               onClick={() => mapRef.current?.zoomIn()}
-              className="flex h-9 w-9 items-center justify-center bg-white/95 text-xl font-bold text-slate-700 transition hover:bg-slate-950 hover:text-white"
+              className="flex h-9 w-9 items-center justify-center text-lg font-bold text-slate-600 transition hover:bg-slate-900 hover:text-white"
               aria-label="Zoom in"
             >
               +
             </button>
-            <div className="h-px bg-slate-200/80" />
+            <div className="mx-1.5 h-px bg-slate-100" />
             <button
               type="button"
               onClick={() => mapRef.current?.zoomOut()}
-              className="flex h-9 w-9 items-center justify-center bg-white/95 text-xl font-bold text-slate-700 transition hover:bg-slate-950 hover:text-white"
+              className="flex h-9 w-9 items-center justify-center text-lg font-bold text-slate-600 transition hover:bg-slate-900 hover:text-white"
               aria-label="Zoom out"
             >
               −
@@ -1463,10 +1496,10 @@ export default function EventMap({
           <button
             type="button"
             onClick={handleToggle3d}
-            className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black shadow-lg shadow-slate-900/15 ring-1 transition ${
+            className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black shadow-md shadow-slate-900/12 ring-1 transition ${
               is3dMode
-                ? "bg-[#F5569B] text-white ring-pink-400/50 shadow-pink-400/30"
-                : "bg-pink-100 text-pink-400 ring-pink-200 hover:bg-[#F5569B] hover:text-white"
+                ? "bg-[#F5569B] text-white ring-pink-400/40 shadow-pink-400/25"
+                : "bg-white/97 text-slate-500 ring-slate-200/70 hover:bg-[#F5569B] hover:text-white hover:ring-pink-400/40"
             }`}
             aria-label="Toggle 3D view"
             title={is3dMode ? "Switch to flat view" : "Switch to 3D view"}
