@@ -1465,8 +1465,8 @@ export default function EventMap({
             onClick={handleToggle3d}
             className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black shadow-lg shadow-slate-900/15 ring-1 transition ${
               is3dMode
-                ? "bg-slate-950 text-white ring-slate-800"
-                : "bg-white/95 text-slate-600 ring-slate-200/80 hover:bg-slate-950 hover:text-white"
+                ? "bg-[#F5569B] text-white ring-pink-400/50 shadow-pink-400/30"
+                : "bg-pink-100 text-pink-400 ring-pink-200 hover:bg-[#F5569B] hover:text-white"
             }`}
             aria-label="Toggle 3D view"
             title={is3dMode ? "Switch to flat view" : "Switch to 3D view"}

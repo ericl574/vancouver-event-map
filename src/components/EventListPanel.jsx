@@ -60,8 +60,10 @@ export default function EventListPanel({
         <button
           type="button"
           onClick={handleTogglePanel}
-          className={`absolute top-1/2 z-50 flex h-14 w-9 -translate-y-1/2 items-center justify-center rounded-2xl bg-slate-950 text-xl font-black text-white shadow-xl shadow-slate-900/20 ring-1 ring-white/80 transition-all duration-300 ease-out hover:scale-105 hover:bg-pink-600 ${
-            isOpen ? "-right-5" : "-right-14"
+          className={`absolute top-1/2 z-50 flex h-12 w-7 -translate-y-1/2 items-center justify-center rounded-xl text-base font-black shadow-lg transition-all duration-300 ease-out hover:scale-105 ${
+            isOpen
+              ? "-right-4 bg-[#F5569B] text-white shadow-pink-400/30 ring-1 ring-white/80"
+              : "-right-11 bg-pink-100 text-pink-400 shadow-pink-200/30 ring-1 ring-pink-200 hover:bg-[#F5569B] hover:text-white"
           }`}
           aria-label={isOpen ? "Hide events list" : "Show events list"}
         >

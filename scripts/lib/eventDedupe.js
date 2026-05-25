@@ -5,7 +5,7 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\b(the|a|an|live|tour|tickets|vancouver|bc|canada|with|presents|featuring|presented)\b/g, " ")
+    .replace(/\b(the|a|an|live|tour|tickets|vancouver|bc|canada|with|presents|presenting|presented|featuring|pres|vol|presented|second|date|new|venue|moved|presents)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -135,13 +135,18 @@ export function scoreEventMatch(candidate, incoming) {
 
   const score = titleScore + venueScore + timeScore + coordinateScore;
 
+  // Same-venue + artist-name overlap: catches "INJI" vs "INJI: tour name",
+  // "Cristoph" vs "Playhouse Pres: Cristoph", etc.
+  const sameVenueArtistMatch =
+    venueScore >= 18 && titleScore >= 10 && score >= 55;
+
   return {
     score,
     titleScore,
     venueScore,
     timeScore,
     coordinateScore,
-    isStrongMatch: score >= 75 && titleScore >= 25,
+    isStrongMatch: (score >= 75 && titleScore >= 25) || sameVenueArtistMatch,
   };
 }
 
