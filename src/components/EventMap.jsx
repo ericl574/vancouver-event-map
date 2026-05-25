@@ -839,19 +839,21 @@ function addEventLayers(map) {
       [">", ["get", "eventCount"], 1],
     ],
     layout: {
-      "text-field": ["get", "venue"],
-      "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-      "text-size": 11,
+      "text-field": ["upcase", ["get", "venue"]],
+      "text-font": ["DIN Offc Pro Bold", "Arial Unicode MS Bold"],
+      "text-size": 12,
       "text-anchor": "bottom",
       "text-offset": [0, -2.4],
       "text-max-width": 10,
+      "text-letter-spacing": 0.08,
       "text-allow-overlap": false,
       "text-ignore-placement": false,
     },
     paint: {
       "text-color": "#F5569B",
       "text-halo-color": "#ffffff",
-      "text-halo-width": 1.5,
+      "text-halo-width": 2,
+      "text-halo-blur": 0.5,
     },
   });
 
@@ -1454,7 +1456,7 @@ export default function EventMap({
       </section>
 
       {isMapReady && (
-        <div className="absolute right-4 top-44 z-[60] flex flex-col items-center gap-2 lg:top-[68px]">
+        <div className="absolute right-4 top-[10.5rem] z-20 flex flex-col items-center gap-2 lg:top-[68px]">
           {/* Locate */}
           <button
             type="button"

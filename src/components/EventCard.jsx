@@ -112,7 +112,7 @@ function useEventActions(event, authSession) {
   return { isSaved, handleToggleSave, handleShare, handleCalendar };
 }
 
-export default function EventCard({ event, isSelected, onClick, authSession, showActions = true }) {
+export default function EventCard({ event, isSelected, onClick, authSession, showActions = true, onViewDetails }) {
   const category = getCategoryById(event.category);
   const eventSubcategories = inferEventSubcategories(event);
   const eventUrl = event.ticketUrl || event.sourceUrl || "";
@@ -200,7 +200,7 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
             <button
               type="button"
               onClick={handleToggleSave}
-              className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-bold transition ${
+              className={`flex flex-1 items-center justify-center gap-1 rounded-full border py-1 text-[10px] font-bold transition ${
                 isSaved
                   ? "border-pink-200 bg-pink-50 text-pink-600"
                   : "border-slate-200 bg-slate-50 text-slate-500 hover:border-pink-200 hover:text-pink-600"
@@ -212,7 +212,7 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
             <button
               type="button"
               onClick={handleShare}
-              className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+              className="flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
             >
               <IconShare className="h-3 w-3" />
               <span>Share</span>
@@ -220,10 +220,10 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
             <button
               type="button"
               onClick={handleCalendar}
-              className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+              className="flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 text-[10px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
             >
               <IconCalendarPlus className="h-3 w-3" />
-              <span>Add to calendar</span>
+              <span>{onViewDetails ? "Calendar" : "Add to calendar"}</span>
             </button>
             {eventUrl && (
               <a
@@ -231,10 +231,19 @@ export default function EventCard({ event, isSelected, onClick, authSession, sho
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="flex flex-1 items-center justify-center whitespace-nowrap rounded-full bg-pink-500 px-2 py-1 text-[10px] font-bold text-white transition hover:bg-pink-600"
+                className="flex flex-1 items-center justify-center rounded-full bg-pink-500 py-1 text-[10px] font-bold text-white transition hover:bg-pink-600"
               >
                 Tickets
               </a>
+            )}
+            {onViewDetails && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
+                className="flex flex-1 items-center justify-center rounded-full border border-slate-700 bg-slate-800 py-1 text-[10px] font-bold text-white transition hover:bg-slate-900"
+              >
+                Details
+              </button>
             )}
           </div>
         )}

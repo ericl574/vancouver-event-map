@@ -5,7 +5,7 @@ const SHEET_STATES = ["peek", "mid", "full"];
 
 function getBaseTransform(state) {
   if (state === "full") return "translateY(0px)";
-  if (state === "mid") return "translateY(calc(100% - 45dvh))";
+  if (state === "mid") return "translateY(calc(100% - 60dvh))";
   return "translateY(calc(100% - 5rem - env(safe-area-inset-bottom, 0px)))";
 }
 
@@ -18,21 +18,27 @@ export default function MobileEventListSheet({
   onShowAllEvents,
   isHidden = false,
   authSession,
+  onViewDetails,
+  quickChips,
+  contextLabel,
+  eventCount,
+  freeCount = 0,
+  nearCount = 0,
 }) {
-  const [sheetState, setSheetState] = useState("peek");
+  const [sheetState, setSheetState] = useState("mid");
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const itemRefs = useRef(new Map());
   const dragRef = useRef(null);
   const hasDraggedRef = useRef(false);
   const prevHiddenRef = useRef(isHidden);
+  const scrollRef = useRef(null);
+  const contentSwipeRef = useRef(null);
 
-  // When event is selected: collapse to peek (sheet slides behind preview card).
-  // When event is dismissed: return to mid so the list is comfortably visible.
+  // When preview card opens: hide sheet. When it closes: return to mid.
   useEffect(() => {
     const wasHidden = prevHiddenRef.current;
     prevHiddenRef.current = isHidden;
-
     if (isHidden) {
       setSheetState("peek");
     } else if (wasHidden) {
@@ -40,18 +46,24 @@ export default function MobileEventListSheet({
     }
   }, [isHidden]);
 
+  // When a map marker is selected, expand from peek → mid so the card is visible.
+  useEffect(() => {
+    if (!selectedEvent?.id || isHidden) return;
+    setSheetState((prev) => (prev === "peek" ? "mid" : prev));
+  }, [selectedEvent?.id, isHidden]);
+
+  // Scroll selected card into view once sheet is expanded.
   useEffect(() => {
     if (sheetState === "peek" || !selectedEvent?.id) return;
     const el = itemRefs.current.get(String(selectedEvent.id));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [sheetState, selectedEvent]);
+  }, [sheetState, selectedEvent?.id]);
 
   function handleSelectEvent(event) {
     onSelectEvent(event);
-    // Sheet hides automatically when selectedEvent is set (isHidden becomes true)
   }
 
-  // --- Drag handlers ---
+  // --- Handle drag (grip bar) ---
 
   function onHandlePointerDown(e) {
     if (e.button && e.button !== 0) return;
@@ -80,7 +92,6 @@ export default function MobileEventListSheet({
     setIsDragging(false);
     setDragY(0);
 
-    // If not a real drag, let onClick handle the tap
     if (!hasDraggedRef.current) return;
 
     const idx = SHEET_STATES.indexOf(startState);
@@ -91,10 +102,36 @@ export default function MobileEventListSheet({
     }
   }
 
-  // Tap on handle (not a drag) cycles peek ↔ full
-  function onHandleClick(e) {
+  function onHandleClick() {
     if (hasDraggedRef.current) return;
     setSheetState((prev) => (prev === "full" ? "peek" : "full"));
+  }
+
+  // --- Scroll content swipe-down to collapse ---
+
+  function onContentTouchStart(e) {
+    if ((scrollRef.current?.scrollTop ?? 1) > 0) return;
+    contentSwipeRef.current = e.touches[0].clientY;
+  }
+
+  function onContentTouchMove(e) {
+    if (contentSwipeRef.current === null) return;
+    if ((scrollRef.current?.scrollTop ?? 1) > 0) {
+      contentSwipeRef.current = null;
+      return;
+    }
+    const delta = e.touches[0].clientY - contentSwipeRef.current;
+    if (delta > 55) {
+      setSheetState((prev) => {
+        const idx = SHEET_STATES.indexOf(prev);
+        return SHEET_STATES[Math.max(idx - 1, 0)];
+      });
+      contentSwipeRef.current = null;
+    }
+  }
+
+  function onContentTouchEnd() {
+    contentSwipeRef.current = null;
   }
 
   const baseTransform = isHidden
@@ -107,17 +144,21 @@ export default function MobileEventListSheet({
 
   const isExpanded = sheetState !== "peek";
 
+  const statusText = contextLabel && contextLabel !== "Vancouver"
+    ? `${contextLabel} in Vancouver`
+    : "Greater Vancouver";
+
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden rounded-t-[1.75rem] bg-white shadow-2xl shadow-slate-900/20 will-change-transform lg:hidden"
       style={{
-        maxHeight: "calc(100dvh - 10rem)",
+        maxHeight: "calc(100dvh - 10.5rem)",
         transform: liveTransform,
         transition: isDragging ? "none" : "transform 0.3s ease-out",
       }}
       aria-hidden={isHidden}
     >
-      {/* Drag handle + collapsed summary — pointer events for drag, onClick for tap */}
+      {/* Drag handle + collapsed summary */}
       <div
         onPointerDown={onHandlePointerDown}
         onPointerMove={onHandlePointerMove}
@@ -178,11 +219,52 @@ export default function MobileEventListSheet({
         </div>
       </div>
 
+      {/* Quick filter chips + status row — only visible when expanded */}
+      {isExpanded && quickChips && quickChips.length > 0 && (
+        <div className="shrink-0 border-t border-slate-100 px-4 py-2.5">
+          <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+            {quickChips.map(({ label, icon: Icon, active, onSelect }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={onSelect}
+                className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                  active
+                    ? "border-pink-500 bg-pink-500 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600"
+                }`}
+              >
+                {Icon && <Icon className="h-3 w-3" />}
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          {contextLabel && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-pink-500" />
+              <p className="text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">{statusText}</span>
+                {" · "}
+                <span>{eventCount ?? events.length} events</span>
+                {freeCount > 0 && <span> · {freeCount} free</span>}
+                {nearCount > 0 && <span> · {nearCount} near you</span>}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Divider */}
       <div className="mx-4 shrink-0 border-t border-slate-100" />
 
       {/* Scrollable event list */}
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] space-y-2.5">
+      <div
+        ref={scrollRef}
+        onTouchStart={onContentTouchStart}
+        onTouchMove={onContentTouchMove}
+        onTouchEnd={onContentTouchEnd}
+        className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] space-y-2.5"
+      >
         {events.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">
             No events found.
@@ -202,6 +284,11 @@ export default function MobileEventListSheet({
                 isSelected={String(selectedEvent?.id) === String(event.id)}
                 onClick={handleSelectEvent}
                 authSession={authSession}
+                onViewDetails={
+                  String(selectedEvent?.id) === String(event.id)
+                    ? onViewDetails
+                    : undefined
+                }
               />
             </div>
           ))

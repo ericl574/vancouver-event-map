@@ -131,6 +131,7 @@ export default function MapHomePage() {
   const [isCategoryExplorePanelOpen, setIsCategoryExplorePanelOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showPreviewCard, setShowPreviewCard] = useState(false);
   const [selectedLocationGroup, setSelectedLocationGroup] = useState(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -329,6 +330,7 @@ export default function MapHomePage() {
   useEffect(() => {
     if (sidebarEvents.length === 0) {
       setSelectedEvent(null);
+      setShowPreviewCard(false);
       return;
     }
 
@@ -340,14 +342,14 @@ export default function MapHomePage() {
       return;
     }
 
-    // When a reference address is pinned, keep the map focused on that address.
-    // Do not auto-select the nearest event and steal the camera.
     if (destinationLocation) {
       setSelectedEvent(null);
+      setShowPreviewCard(false);
       return;
     }
 
     setSelectedEvent(null);
+    setShowPreviewCard(false);
   }, [sidebarEvents, selectedEvent?.id, destinationLocation]);
 
   function handleSelectCategory(categoryId) {
@@ -371,7 +373,7 @@ export default function MapHomePage() {
     setNearestError("");
   }
 
-  function handleSelectEvent(event) {
+  function selectEvent(event, openPreview) {
     setIsAccountMenuOpen(false);
     const isInCurrentGroup = selectedLocationGroup?.events.some(
       (e) => String(e.id) === String(event?.id)
@@ -380,14 +382,30 @@ export default function MapHomePage() {
       setSelectedLocationGroup(null);
     }
     setSelectedEvent(event);
-
+    setShowPreviewCard(openPreview);
     if (event?.distanceKm !== undefined) {
       setNearestEvent(event);
     }
   }
 
+  // Clicking a map marker → highlight in list, no preview card
+  function handleSelectEventFromMap(event) {
+    selectEvent(event, false);
+  }
+
+  // Clicking an event card in the desktop list → open full preview card
+  function handleSelectEventFromList(event) {
+    selectEvent(event, true);
+  }
+
+  // "Details" button in the mobile featured card → open preview card
+  function handleOpenPreviewCard() {
+    setShowPreviewCard(true);
+  }
+
   function handleClearMapSelection() {
     setSelectedEvent(null);
+    setShowPreviewCard(false);
     setSelectedLocationGroup(null);
   }
 
@@ -768,7 +786,7 @@ export default function MapHomePage() {
       <EventMap
         events={displayedEvents}
         selectedEvent={selectedEvent}
-        onSelectEvent={handleSelectEvent}
+        onSelectEvent={handleSelectEventFromMap}
         onSelectLocationGroup={handleSelectLocationGroup}
         onClearSelection={handleClearMapSelection}
         onMapBackgroundClick={handleMapBackgroundClick}
@@ -812,9 +830,17 @@ export default function MapHomePage() {
             userInitial={getUserInitial()}
           />
 
+          {/* Mobile category chips — directly below VanEvent bar */}
+          <div className="lg:hidden">
+            <MobileCategoryChips
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+            />
+          </div>
+
           {categoryHasExplorePanel(selectedCategory) && isCategoryExplorePanelOpen && (
             <div
-              className={`absolute right-0 top-12 z-40 lg:top-[68px] lg:right-20 ${
+              className={`absolute right-0 top-[6rem] z-40 lg:top-[68px] lg:right-20 ${
                 isEventListPanelOpen ? "left-0 lg:left-[478px]" : "left-0 lg:left-[60px]"
               }`}
             >
@@ -828,7 +854,7 @@ export default function MapHomePage() {
           )}
 
           {/* Search bar: full width on mobile, fixed width left-aligned on desktop */}
-          <div className="mt-3 px-4 lg:mx-0 lg:ml-5 lg:w-[422px] lg:px-0">
+          <div className="mt-2 px-4 lg:mt-3 lg:mx-0 lg:ml-5 lg:w-[422px] lg:px-0">
             <SearchBar
               query={query}
               onQueryChange={handleQueryChange}
@@ -838,42 +864,6 @@ export default function MapHomePage() {
               isSearchingLocation={isSearchingLocation}
               activeFilterSummary={activeFilterSummary}
               timeRangeHint={timeRangeHint}
-            />
-          </div>
-
-          {/* Mobile-only chips (desktop chips live inside EventListPanel) */}
-          <div className="lg:hidden">
-            <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4">
-              {quickChips.map(({ label, icon: Icon, active, onSelect }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={onSelect}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
-                    active
-                      ? "border-pink-500 bg-pink-500 text-white"
-                      : "border-slate-200 bg-white/90 text-slate-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600"
-                  }`}
-                >
-                  {Icon && <Icon className="h-3.5 w-3.5" />}
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-4 text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">{contextLabel}</span>
-              <span>·</span>
-              <span>{displayedEvents.length} event{displayedEvents.length !== 1 ? "s" : ""}</span>
-              {freeCount > 0 && <><span>·</span><span>{freeCount} free</span></>}
-              {nearCount > 0 && <><span>·</span><span>{nearCount} near you</span></>}
-            </div>
-          </div>
-
-          {/* Mobile category chips */}
-          <div className="lg:hidden">
-            <MobileCategoryChips
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleSelectCategory}
             />
           </div>
 
@@ -925,7 +915,7 @@ export default function MapHomePage() {
       <EventListPanel
         events={sidebarEvents}
         selectedEvent={selectedEvent}
-        onSelectEvent={handleSelectEvent}
+        onSelectEvent={handleSelectEventFromList}
         isOpen={isEventListPanelOpen}
         onCollapse={() => setIsEventListPanelOpen(false)}
         onExpand={() => setIsEventListPanelOpen(true)}
@@ -947,7 +937,8 @@ export default function MapHomePage() {
       <MobileEventListSheet
         events={sidebarEvents}
         selectedEvent={selectedEvent}
-        onSelectEvent={handleSelectEvent}
+        onSelectEvent={handleSelectEventFromMap}
+        onViewDetails={handleOpenPreviewCard}
         title={sidebarTitle}
         subtitle={sidebarSubtitle}
         onShowAllEvents={
@@ -955,11 +946,16 @@ export default function MapHomePage() {
             ? handleShowAllEvents
             : undefined
         }
-        isHidden={Boolean(selectedEvent)}
+        isHidden={showPreviewCard}
         authSession={authSession}
+        quickChips={quickChips}
+        contextLabel={contextLabel}
+        eventCount={displayedEvents.length}
+        freeCount={freeCount}
+        nearCount={nearCount}
       />
 
-      {selectedEvent && (
+      {selectedEvent && showPreviewCard && (
         <EventPreviewCard
           event={selectedEvent}
           authSession={authSession}
